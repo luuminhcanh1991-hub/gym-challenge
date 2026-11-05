@@ -49,12 +49,18 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Base path
+        # Repo tên <owner>.github.io → site ở gốc "/", còn lại → "/<repo>/"
+        run: |
+          R="${{ github.event.repository.name }}"
+          if [[ "$R" == *.github.io ]]; then echo "BASE_PATH=/" >> $GITHUB_ENV; else echo "BASE_PATH=/$R/" >> $GITHUB_ENV; fi
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-          BASE_PATH: /${{ github.event.repository.name }}/
-        run: npm run build
+        run: |
+          npm run build
+          sed -i "s#__BASE_PATH__#$BASE_PATH#" dist/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

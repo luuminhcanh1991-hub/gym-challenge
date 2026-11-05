@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { configured, rpc, session, errText } from './api.js'
+import { configured, rpc, session, errText, RECOVERY } from './api.js'
 import { Brand, Icon, Toaster, toast } from './ui.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -39,7 +39,7 @@ const SIDE = [
 export default function App() {
   const route = useRoute()
   if (!configured) return <Setup />
-  if (route.startsWith('admin')) return <><Admin /><Toaster /></>
+  if (RECOVERY || route.startsWith('admin')) return <><Admin /><Toaster /></>
   return <><MemberApp route={route} /><Toaster /></>
 }
 
@@ -71,7 +71,7 @@ function MemberApp({ route }) {
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', v); window.removeEventListener('focus', v) }
   }, [load])
 
-  if (!sess) return <Login onLogin={(s) => { session.set(s); setSess(s) }} />
+  if (!sess) return <Login onLogin={(s) => { session.set(s); window.location.hash = '#/'; setSess(s) }} />
   if (!state) return <div className="login">{loadErr ? <div className="card stack" style={{ maxWidth: 420 }}><b>Không tải được dữ liệu</b><span className="muted">{loadErr}</span><button className="btn primary" onClick={() => load()}>Thử lại</button></div> : <div className="spinner" />}</div>
 
   const me = state.members.find((m) => m.id === state.me)

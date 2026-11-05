@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase, rpc, errText } from '../api.js'
+import { supabase, rpc, errText, RECOVERY } from '../api.js'
 import { Ava, Brand, Icon, Sheet, toast } from '../ui.jsx'
 import { TxList } from './Finance.jsx'
 import { MonthNav } from './Calendar.jsx'
@@ -10,24 +10,87 @@ const COLORS = ['#3dff7a', '#00e5ff', '#ffd23f', '#ff6b6b', '#b388ff', '#ff9f43'
 
 export default function Admin() {
   const [user, setUser] = useState(undefined)
+  const [recovery, setRecovery] = useState(RECOVERY)
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user || null))
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setUser(s?.user || null))
+    const { data } = supabase.auth.onAuthStateChange((e, s) => { if (e === 'PASSWORD_RECOVERY') setRecovery(true); setUser(s?.user || null) })
     return () => data.subscription.unsubscribe()
   }, [])
   if (user === undefined) return <div className="login"><div className="spinner" /></div>
+  if (recovery) return <SetNewPassword user={user} onDone={() => { setRecovery(false); window.history.replaceState(null, '', window.location.pathname + '#/admin') }} />
   if (!user) return <AdminLogin />
   return <AdminApp user={user} />
 }
 
+function SetNewPassword({ user, onDone }) {
+  const [p1, setP1] = useState(''); const [p2, setP2] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('')
+  if (!user) return (
+    <div className="login"><div className="login-box card stack">
+      <Brand />
+      <b>Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn</b>
+      <span className="muted small">Link chỉ dùng được 1 lần và có hạn ngắn. Hãy yêu cầu link mới.</span>
+      <button className="btn primary" onClick={onDone}>Về trang đăng nhập Admin</button>
+    </div></div>
+  )
+  async function go(e) {
+    e.preventDefault(); setErr('')
+    if (p1.length < 8) return setErr('Mật khẩu tối thiểu 8 ký tự.')
+    if (p1 !== p2) return setErr('Hai lần nhập không khớp.')
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ password: p1 })
+    setBusy(false)
+    if (error) return setErr(errText(error))
+    toast('Đã đặt mật khẩu mới.'); onDone()
+  }
+  return (
+    <div className="login">
+      <form className="login-box card" onSubmit={go}>
+        <Brand />
+        <div><h1 className="display" style={{ fontSize: 34 }}>Đặt mật khẩu mới</h1><div className="muted small">{user.email}</div></div>
+        <div className="field"><label htmlFor="np1">Mật khẩu mới (tối thiểu 8 ký tự)</label><input id="np1" className="input" type="password" autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} required /></div>
+        <div className="field"><label htmlFor="np2">Nhập lại mật khẩu mới</label><input id="np2" className="input" type="password" autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} required /></div>
+        {err && <div style={{ color: 'var(--red)', fontWeight: 600 }} role="alert">{err}</div>}
+        <button className="btn primary block" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu mật khẩu'}</button>
+      </form>
+    </div>
+  )
+}
+
 function AdminLogin() {
   const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('')
+  const [forgot, setForgot] = useState(false); const [sent, setSent] = useState(false)
   async function go(e) {
     e.preventDefault(); setBusy(true); setErr('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw })
-    if (error) setErr(errText(error))
+    if (forgot) {
+      const redirectTo = window.location.origin + window.location.pathname + '?reset=1'
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+      if (error) setErr(errText(error)); else setSent(true)
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pw })
+      if (error) setErr(errText(error))
+    }
     setBusy(false)
   }
+  if (forgot) return (
+    <div className="login">
+      <form className="login-box card" onSubmit={go}>
+        <Brand />
+        <div><h1 className="display" style={{ fontSize: 34 }}>Quên mật khẩu</h1><div className="muted small">Nhập email Admin, hệ thống gửi link đặt lại mật khẩu.</div></div>
+        {sent ? (
+          <div className="stack">
+            <div className="card pad-s" style={{ borderColor: 'rgba(61,255,122,.4)' }}>Đã gửi. Mở email <b>{email}</b>, bấm link trong thư (kiểm tra cả mục Spam). Link dùng 1 lần.</div>
+          </div>
+        ) : (
+          <>
+            <div className="field"><label htmlFor="fe">Email</label><input id="fe" className="input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+            {err && <div style={{ color: 'var(--red)', fontWeight: 600 }} role="alert">{err}</div>}
+            <button className="btn primary block" disabled={busy}>{busy ? 'Đang gửi…' : 'Gửi link đặt lại'}</button>
+          </>
+        )}
+        <button type="button" className="btn ghost" onClick={() => { setForgot(false); setSent(false); setErr('') }}>← Quay lại đăng nhập</button>
+      </form>
+    </div>
+  )
   return (
     <div className="login">
       <form className="login-box card" onSubmit={go}>
@@ -37,6 +100,7 @@ function AdminLogin() {
         <div className="field"><label htmlFor="pw">Mật khẩu</label><input id="pw" className="input" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required /></div>
         {err && <div style={{ color: 'var(--red)', fontWeight: 600 }} role="alert">{err}</div>}
         <button className="btn primary block" disabled={busy}>{busy ? 'Đang đăng nhập…' : 'Đăng nhập'}</button>
+        <button type="button" className="btn ghost" onClick={() => { setForgot(true); setErr('') }}>Quên mật khẩu?</button>
         <a href="#/" className="small muted">← Về ứng dụng thành viên</a>
       </form>
     </div>
@@ -252,7 +316,7 @@ function ASettings({ state, reload }) {
     const off = v.off_text.split(/[\s,;]+/).filter(Boolean)
     if (off.some((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d))) return toast('Ngày nghỉ thêm phải dạng YYYY-MM-DD.', true)
     if (!confirm('Lưu cài đặt? Chỉ áp dụng cho các ngày chưa chốt.')) return
-    await call('admin_update_settings', { p: { penalty_amount: Number(v.penalty_amount), workdays: v.workdays, off_dates: off, checkin_start: v.checkin_start, checkin_end: v.checkin_end, challenge_start: v.challenge_start } }, 'Đã lưu cài đặt.', reload)
+    await call('admin_update_settings', { p: { penalty_amount: Number(v.penalty_amount), workdays: v.workdays, off_dates: off, checkin_start: v.checkin_start, checkin_end: v.checkin_end, challenge_start: v.challenge_start, allow_self_join: !!v.allow_self_join, join_code: v.join_code || '' } }, 'Đã lưu cài đặt.', reload)
   }
   return (
     <div className="card stack" style={{ maxWidth: 620 }}>
@@ -267,6 +331,18 @@ function ASettings({ state, reload }) {
       </div>
       <div className="field"><label htmlFor="st">Ngày bắt đầu thử thách</label><input id="st" type="date" className="input" value={v.challenge_start} onChange={(e) => setV({ ...v, challenge_start: e.target.value })} /></div>
       <div className="field"><label htmlFor="od">Ngày nghỉ thêm (lễ, Tết) — cách nhau bằng dấu phẩy</label><input id="od" className="input" placeholder="2027-01-01, 2027-02-16" value={v.off_text} onChange={(e) => setV({ ...v, off_text: e.target.value })} /></div>
+      <h3 className="display" style={{ fontSize: 22, marginTop: 10 }}>Thành viên mới tự tham gia</h3>
+      <label className="row" style={{ gap: 10, fontWeight: 600 }}>
+        <input type="checkbox" checked={!!v.allow_self_join} onChange={(e) => setV({ ...v, allow_self_join: e.target.checked })} style={{ width: 22, height: 22, accentColor: 'var(--neon)' }} />
+        Cho phép tự tham gia bằng mã mời
+      </label>
+      <div className="field"><label htmlFor="jcode">Mã mời (gửi cho người muốn tham gia)</label>
+        <div className="row" style={{ gap: 8 }}>
+          <input id="jcode" className="input grow" value={v.join_code || ''} onChange={(e) => setV({ ...v, join_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) })} />
+          <button className="btn sm" type="button" onClick={() => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint8Array(6)); setV({ ...v, join_code: [...r].map((x) => a[x % 32]).join('') }) }}>Tạo mã mới</button>
+        </div>
+        <span className="small dim">Đổi mã thì mã cũ hết hiệu lực ngay sau khi lưu.</span>
+      </div>
       <button className="btn primary" onClick={save}>Lưu cài đặt</button>
     </div>
   )

@@ -5,6 +5,8 @@ import { createClient } from '@supabase/supabase-js'
 const URL = import.meta.env.VITE_SUPABASE_URL || 'https://xfgmuratayonsvssbwmx.supabase.co'
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_s_rEp9LQci4rd8J0ES3xug_P_PKK0ka'
 export const configured = Boolean(URL && KEY)
+// Đọc trước khi Supabase xử lý URL: link đặt lại mật khẩu Admin từ email
+export const RECOVERY = typeof window !== 'undefined' && (/type=recovery/.test(window.location.hash) || /[?&]reset=1/.test(window.location.search))
 export const supabase = configured
   ? createClient(URL, KEY, { auth: { persistSession: true, storageKey: 'gc-admin-auth' } })
   : null
@@ -33,6 +35,13 @@ const ERR = {
   TYPE_INVALID: 'Loại giao dịch không hợp lệ.',
   STATUS_INVALID: 'Trạng thái không hợp lệ.',
   LEDGER_IMMUTABLE: 'Không được sửa giao dịch cũ.',
+  JOIN_DISABLED: 'Nhóm đang tạm khóa đăng ký mới. Liên hệ Admin.',
+  JOIN_CODE_SHORT: 'Mã mời phải có ít nhất 4 ký tự.',
+  NAME_TAKEN: 'Tên này đã có người dùng. Chọn tên khác.',
+  NAME_INVALID: 'Tên phải từ 2 đến 40 ký tự.',
+  NO_RECOVERY_CODE: 'Tài khoản chưa có mã khôi phục. Nhờ Admin đặt lại PIN.',
+  TOO_MANY_ATTEMPTS: 'Thử quá nhiều lần. Vui lòng đợi ít phút.',
+  TRY_AGAIN: 'Hệ thống đang bận, thử lại.',
 }
 
 export function errText(e) {

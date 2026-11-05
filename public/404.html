@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="vi"><head><meta charset="utf-8"><title>GYM CHALLENGE</title>
 <script>
-  // GitHub Pages SPA: /gym-challenge/admin → /gym-challenge/#/admin
+  // GitHub Pages SPA: <base>admin → <base>#/admin  (BASE được điền lúc build)
   (function () {
-    var l = window.location, parts = l.pathname.split('/').filter(Boolean);
-    var base = parts.length ? '/' + parts[0] + '/' : '/';
-    var rest = parts.slice(1).join('/');
-    l.replace(base + '#/' + rest + l.search);
+    var base = '__BASE_PATH__';
+    if (base.indexOf('__') === 0) base = '/gym-challenge/';
+    var l = window.location, p = l.pathname;
+    var rest = p.indexOf(base) === 0 ? p.slice(base.length) : p.replace(/^\//, '');
+    l.replace(base + '#/' + rest.replace(/\/$/, '') + l.search);
   })();
 </script></head><body style="background:#0A0A0A"></body></html>

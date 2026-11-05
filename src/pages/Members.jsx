@@ -46,7 +46,7 @@ export default function Members({ state }) {
           </article>
         ))}
       </div>
-      <p className="small dim" style={{ marginTop: 16 }}>Thêm thành viên mới tại trang Admin.</p>
+      <p className="small dim" style={{ marginTop: 16 }}>Người mới: đăng xuất → “Thành viên mới? Tham gia nhóm” và nhập mã mời{state.settings.join_code ? <> <b className="neon">{state.settings.join_code}</b></> : null}. Admin cũng có thể thêm trực tiếp.</p>
     </>
   )
 }

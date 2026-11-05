@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { rpc, errText } from '../api.js'
 import { Ava, Icon, Sheet, toast } from '../ui.jsx'
+import { RecoveryCode } from './Login.jsx'
 
 export default function More({ me, token, logout, state }) {
   const [pinOpen, setPinOpen] = useState(false)
+  const [rc, setRc] = useState(null)
+  const newCode = async () => {
+    if (!confirm('Tạo mã khôi phục mới? Mã cũ (nếu có) sẽ hết hiệu lực.')) return
+    try { setRc(await rpc('member_new_recovery_code', { p_token: token })) } catch (e) { toast(errText(e), true) }
+  }
   const [o, setO] = useState(''); const [n, setN] = useState(''); const [busy, setBusy] = useState(false)
   const links = [
     ['members', 'users', 'Thành viên'], ['finance', 'wallet', 'Tài chính & ví'], ['report', 'report', 'Báo cáo tháng'],
@@ -27,11 +33,13 @@ export default function More({ me, token, logout, state }) {
       </div>
       <div className="stack section" style={{ marginTop: 12 }}>
         <button className="btn block" onClick={() => setPinOpen(true)}><Icon n="lock" width="18" />Đổi PIN</button>
+        <button className="btn block" onClick={newCode}><Icon n="shield" width="18" />Tạo mã khôi phục PIN</button>
         <button className="btn danger block" onClick={logout}><Icon n="logout" width="18" />Đăng xuất</button>
       </div>
       <p className="small dim" style={{ marginTop: 20 }}>
         Cài như ứng dụng: trên iPhone mở bằng Safari → Chia sẻ → “Thêm vào MH chính”. Trên Android: Chrome → ⋮ → “Cài đặt ứng dụng”.
       </p>
+      {rc && <Sheet title="Mã khôi phục" onClose={() => setRc(null)}><RecoveryCode code={rc} onNext={() => setRc(null)} nextLabel="Đã lưu, đóng" /></Sheet>}
       {pinOpen && (
         <Sheet title="Đổi PIN" onClose={() => setPinOpen(false)}>
           <div className="stack">
