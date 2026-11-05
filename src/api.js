@@ -7,8 +7,13 @@ const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_s_rEp9LQci
 export const configured = Boolean(URL && KEY)
 // Đọc trước khi Supabase xử lý URL: link đặt lại mật khẩu Admin từ email
 export const RECOVERY = typeof window !== 'undefined' && (/type=recovery/.test(window.location.hash) || /[?&]reset=1/.test(window.location.search))
+// Client Admin: có phiên đăng nhập Supabase Auth
 export const supabase = configured
   ? createClient(URL, KEY, { auth: { persistSession: true, storageKey: 'gc-admin-auth' } })
+  : null
+// Client thành viên: luôn ẩn danh (không gửi phiên Admin), xác thực bằng token PIN
+const memberClient = configured
+  ? createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'gc-member-anon' } })
   : null
 
 const ERR = {
@@ -55,6 +60,11 @@ export function errText(e) {
 }
 
 export async function rpc(fn, args = {}) {
+  const { data, error } = await memberClient.rpc(fn, args)
+  if (error) throw new Error(error.message)
+  return data
+}
+export async function adminRpc(fn, args = {}) {
   const { data, error } = await supabase.rpc(fn, args)
   if (error) throw new Error(error.message)
   return data

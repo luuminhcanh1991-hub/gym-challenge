@@ -75,6 +75,16 @@ function MemberApp({ route }) {
   if (!state) return <div className="login">{loadErr ? <div className="card stack" style={{ maxWidth: 420 }}><b>Không tải được dữ liệu</b><span className="muted">{loadErr}</span><button className="btn primary" onClick={() => load()}>Thử lại</button></div> : <div className="spinner" />}</div>
 
   const me = state.members.find((m) => m.id === state.me)
+  if (!me) {
+    return (
+      <div className="login"><div className="login-box card stack">
+        <Brand />
+        <b>Không tìm thấy tài khoản thành viên của bạn</b>
+        <span className="muted small">Tài khoản có thể đã bị Admin xóa hoặc đặt lại. Vui lòng đăng nhập lại.</span>
+        <button className="btn primary" onClick={() => { session.clear(); setSess(null); setState(null) }}>Đăng nhập lại</button>
+      </div></div>
+    )
+  }
   const logout = async () => { try { await rpc('member_logout', { p_token: sess.token }) } catch {} session.clear(); setSess(null); setState(null) }
   const ctx = { state, me, token: sess.token, reload: load, month: month || state.month, setMonth: (m) => { setMonth(m); load(m) }, logout }
   const todayDone = me?.today?.status === 'trained'

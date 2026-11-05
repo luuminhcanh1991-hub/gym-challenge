@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase, rpc, errText, RECOVERY } from '../api.js'
+import { supabase, adminRpc as rpc, errText, RECOVERY } from '../api.js'
 import { Ava, Brand, Icon, Sheet, toast, askConfirm, askText } from '../ui.jsx'
 import { TxList } from './Finance.jsx'
 import { MonthNav } from './Calendar.jsx'
