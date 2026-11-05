@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>GYM CHALLENGE</title>
+<script>
+  // GitHub Pages SPA: /gym-challenge/admin → /gym-challenge/#/admin
+  (function () {
+    var l = window.location, parts = l.pathname.split('/').filter(Boolean);
+    var base = parts.length ? '/' + parts[0] + '/' : '/';
+    var rest = parts.slice(1).join('/');
+    l.replace(base + '#/' + rest + l.search);
+  })();
+</script></head><body style="background:#0A0A0A"></body></html>

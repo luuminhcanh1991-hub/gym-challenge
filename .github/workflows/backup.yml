@@ -1,0 +1,36 @@
+name: Backup database
+
+# Sao lưu hằng tuần (Chủ nhật 23:00 giờ VN). Cần secret SUPABASE_DB_URL
+# (Supabase → Project Settings → Database → Connection string → URI, dạng Session pooler).
+# File sao lưu nằm trong mục Artifacts của lần chạy, giữ 90 ngày, KHÔNG đẩy lên repo.
+on:
+  schedule:
+    - cron: '0 16 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secret
+        id: chk
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB" ]; then echo "Chưa cấu hình SUPABASE_DB_URL — bỏ qua."; echo "skip=1" >> $GITHUB_OUTPUT; fi
+      - name: Dump
+        if: steps.chk.outputs.skip != '1'
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          sudo apt-get install -y -qq postgresql-client >/dev/null 2>&1 || true
+          pg_dump "$DB" --schema=public --no-owner --no-privileges -Fc -f gym-challenge-$(date +%F).dump
+      - uses: actions/upload-artifact@v4
+        if: steps.chk.outputs.skip != '1'
+        with:
+          name: db-backup
+          path: '*.dump'
+          retention-days: 90
