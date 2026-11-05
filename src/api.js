@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
-const URL = import.meta.env.VITE_SUPABASE_URL
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Publishable key là khóa công khai (an toàn trên frontend; quyền thật do RLS + hàm SQL kiểm soát).
+// Có thể ghi đè bằng biến GitHub Actions VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.
+const URL = import.meta.env.VITE_SUPABASE_URL || 'https://xfgmuratayonsvssbwmx.supabase.co'
+const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_s_rEp9LQci4rd8J0ES3xug_P_PKK0ka'
 export const configured = Boolean(URL && KEY)
 export const supabase = configured
   ? createClient(URL, KEY, { auth: { persistSession: true, storageKey: 'gc-admin-auth' } })
