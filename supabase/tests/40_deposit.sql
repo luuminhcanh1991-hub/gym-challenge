@@ -73,3 +73,19 @@ select t_eq((select status from dues where member_id = :'lanid' and month = '202
 select t_eq(((select sum(amount) from wallet_tx where status='confirmed') + (select sum(amount) from fund_tx))::int,
   ((select sum(amount) from wallet_tx where status='confirmed' and type in ('deposit','adjustment')))::int, 'K19 cân đối: ví + quỹ = tiền thật đã nộp');
 select t_eq((select (x->>'fee')::int from jsonb_array_elements(month_report('2026-12-01')->'members') x where x->>'id' = :'lanid'), 144000, 'K20 báo cáo tháng hiện ký quỹ yêu cầu');
+-- 006: chặn chi vượt quỹ, hoàn vượt ví
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000a0a0';
+select t_err($$select public.admin_fund_entry('expense', 999999999, 'liên hoan')$$, 'FUND_INSUFFICIENT', 'G1 không chi vượt số dư quỹ');
+select t_err(format($$select public.admin_wallet_entry(%L, 'adjustment', -999999999, 'hoàn trả')$$, :'lanid'), 'WALLET_INSUFFICIENT', 'G2 không hoàn vượt số dư ví');
+reset request.jwt.claim.sub;
+reset role;
+select coalesce(sum(amount),0) as fundnow from fund_tx \gset
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000a0a0';
+select admin_fund_entry('expense', :fundnow, 'Liên hoan cuối tháng') is null;
+reset request.jwt.claim.sub;
+reset role;
+select t_eq((select sum(amount) from fund_tx)::int, 0, 'G3 chi đúng bằng số dư quỹ → quỹ về 0');
+select t_eq(((select sum(amount) from wallet_tx where status='confirmed') + (select sum(amount) from fund_tx))::int,
+  ((select sum(amount) from wallet_tx where status='confirmed' and type in ('deposit','adjustment')) - (select coalesce(-sum(amount),0) from fund_tx where type = 'expense'))::int, 'G4 cân đối sau chi: ví + quỹ = tiền nộp − tiền đã chi');

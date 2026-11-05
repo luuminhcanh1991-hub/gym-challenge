@@ -195,7 +195,9 @@ function AHome({ state, reload }) {
               return (
                 <div className="li" key={t.id} style={{ flexWrap: 'wrap' }}>
                   {m && <Ava m={m} size="sm" />}
-                  <div className="grow"><b>{m?.name}</b> <span className="amt plus" style={{ fontSize: 18 }}>{vnd(t.amount)}</span><div className="small dim">{dateTimeVN(t.created_at)}{t.note ? ' · ' + t.note : ''}</div></div>
+                  <div className="grow"><b>{m?.name}</b> <span className="amt plus" style={{ fontSize: 18 }}>{vnd(t.amount)}</span>
+                    <div className="small">Nội dung CK: <b style={{ color: 'var(--gold)', userSelect: 'all' }}>{(t.note || '').split(' · ')[0] || '—'}</b></div>
+                    <div className="small dim">{dateTimeVN(t.created_at)}{(t.note || '').includes(' · ') ? ' · ' + t.note.split(' · ').slice(1).join(' · ') : ''}</div></div>
                   <div className="row" style={{ gap: 8 }}>
                     <button className="btn sm danger" onClick={async () => (await askConfirm('Từ chối yêu cầu này?')) && call('admin_decide_deposit', { p_id: t.id, p_approve: false, p_note: null }, 'Đã từ chối.', reload)}>Từ chối</button>
                     <button className="btn sm primary" onClick={async () => (await askConfirm(`Xác nhận đã nhận ${vnd(t.amount)} từ ${m?.name}?`)) && call('admin_decide_deposit', { p_id: t.id, p_approve: true, p_note: null }, 'Đã xác nhận, tiền đã vào ví.', reload)}>Đã nhận tiền</button>
@@ -206,7 +208,41 @@ function AHome({ state, reload }) {
           </div>
         )}
       </div>
+      <Reconcile total={wallets + f.balance} />
+      <Duties />
     </>
+  )
+}
+
+function Reconcile({ total }) {
+  const [bank, setBank] = useState('')
+  const n = Number(bank.replace(/\D/g, ''))
+  const diff = bank ? n - total : null
+  return (
+    <div className="card section stack" style={{ marginTop: 12 }}>
+      <h3 className="display" style={{ fontSize: 22 }}>Đối soát với tài khoản ngân hàng</h3>
+      <p className="small muted" style={{ margin: 0 }}>Nhập số dư thực tế trong tài khoản thủ quỹ (phần dành cho nhóm). Con số này phải bằng <b>{vnd(total)}</b> = ví thành viên + quỹ chung.</p>
+      <div className="row wrap" style={{ gap: 10 }}>
+        <input className="input" style={{ maxWidth: 260 }} inputMode="numeric" placeholder="Số dư ngân hàng" value={bank ? n.toLocaleString('vi-VN') : ''} onChange={(e) => setBank(e.target.value)} aria-label="Số dư ngân hàng" />
+        {diff !== null && (diff === 0 ? <span className="pill trained">Khớp</span> : <span className="pill penalty">{diff > 0 ? 'Ngân hàng dư' : 'Ngân hàng thiếu'} {vnd(Math.abs(diff))}</span>)}
+      </div>
+      {diff !== null && diff !== 0 && <p className="small dim" style={{ margin: 0 }}>{diff > 0 ? 'Có thể có khoản chuyển khoản chưa bấm "Đã nhận tiền", hoặc tiền không thuộc nhóm.' : 'Có thể đã chi quỹ / hoàn trả mà chưa ghi vào app, hoặc xác nhận nạp nhầm.'}</p>}
+    </div>
+  )
+}
+
+function Duties() {
+  return (
+    <div className="card section" style={{ marginTop: 12 }}>
+      <h3 className="display" style={{ fontSize: 22, marginBottom: 6 }}>Việc của thủ quỹ</h3>
+      <ol className="small" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.8 }}>
+        <li><b>Nhận tiền:</b> thấy yêu cầu nạp → mở app ngân hàng, tìm giao dịch đúng <b>số tiền + nội dung CK</b> → bấm <b>Đã nhận tiền</b>. Không thấy tiền → <b>Từ chối</b>.</li>
+        <li><b>Nhận tiền mặt:</b> Ví & Quỹ → Ghi nhận vào ví → Nạp tiền (ghi "tiền mặt").</li>
+        <li><b>Chi quỹ</b> (liên hoan, ăn uống, thưởng): chi tiền thật → Ví & Quỹ → Chi quỹ, ghi nội dung. Chỉ chi trong số dư quỹ chung.</li>
+        <li><b>Hoàn ký quỹ</b> (người rời nhóm): chuyển trả → Ví & Quỹ → Hoàn trả tiền cho thành viên.</li>
+        <li><b>Cuối tháng:</b> đối soát số dư ngân hàng ở trên → Báo cáo & chốt → Chốt tháng → Sao lưu.</li>
+      </ol>
+    </div>
   )
 }
 
@@ -278,7 +314,7 @@ function AMoney({ state, reload }) {
           </select>
           <input className="input" inputMode="numeric" placeholder={w.type === 'adjustment' ? 'Số tiền, âm để trừ: -50000' : 'Số tiền'} value={w.amount} onChange={(e) => setW({ ...w, amount: e.target.value })} aria-label="Số tiền" />
           <input className="input" placeholder="Ghi chú (bắt buộc)" value={w.note} onChange={(e) => setW({ ...w, note: e.target.value })} aria-label="Ghi chú" />
-          <button className="btn primary" onClick={async () => (await askConfirm('Ghi nhận giao dịch này? Giao dịch không thể sửa/xóa.')) && (await call('admin_wallet_entry', { p_member: w.member, p_type: w.type === 'withdraw' ? 'adjustment' : w.type, p_amount: w.type === 'withdraw' ? -Math.abs(num(w.amount)) : num(w.amount), p_note: w.type === 'withdraw' ? 'Hoàn trả tiền: ' + w.note : w.note }, 'Đã ghi nhận.', reload)) && setW({ ...w, amount: '', note: '' })}>Ghi nhận</button>
+          <button className="btn primary" onClick={async () => (await askConfirm('Ghi nhận giao dịch này? Giao dịch không thể sửa/xóa.')) && (await (w.type === 'withdraw' && Math.abs(num(w.amount)) > Math.max(0, state.members.find((x) => x.id === w.member)?.balance || 0) ? (toast('Không hoàn quá số dư ví của thành viên.', true), false) : true) && call('admin_wallet_entry', { p_member: w.member, p_type: w.type === 'withdraw' ? 'adjustment' : w.type, p_amount: w.type === 'withdraw' ? -Math.abs(num(w.amount)) : num(w.amount), p_note: w.type === 'withdraw' ? 'Hoàn trả tiền: ' + w.note : w.note }, 'Đã ghi nhận.', reload)) && setW({ ...w, amount: '', note: '' })}>Ghi nhận</button>
         </div>
         <div className="card stack">
           <h3 className="display" style={{ fontSize: 22 }}>Quỹ chung · {vnd(state.fund.balance)}</h3>
@@ -287,7 +323,7 @@ function AMoney({ state, reload }) {
           </select>
           <input className="input" inputMode="numeric" placeholder="Số tiền" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} aria-label="Số tiền" />
           <input className="input" placeholder="Ghi chú (bắt buộc)" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} aria-label="Ghi chú" />
-          <button className="btn primary" onClick={async () => (await askConfirm('Ghi nhận giao dịch quỹ?')) && (await call('admin_fund_entry', { p_type: f.type, p_amount: num(f.amount), p_note: f.note }, 'Đã ghi nhận.', reload)) && setF({ ...f, amount: '', note: '' })}>Ghi nhận</button>
+          <button className="btn primary" onClick={async () => (await askConfirm('Ghi nhận giao dịch quỹ?')) && (await (f.type === 'expense' && Math.abs(num(f.amount)) > state.fund.balance ? (toast('Quỹ chung không đủ (' + vnd(state.fund.balance) + ').', true), false) : true) && call('admin_fund_entry', { p_type: f.type, p_amount: num(f.amount), p_note: f.note }, 'Đã ghi nhận.', reload)) && setF({ ...f, amount: '', note: '' })}>Ghi nhận</button>
         </div>
       </div>
       <div className="grid gm2 section">

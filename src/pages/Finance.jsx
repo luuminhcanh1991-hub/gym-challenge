@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import QRCode from 'qrcode'
+import { vietqrPayload, asciiMemo, BANKS } from '../vietqr.js'
 import { rpc, errText } from '../api.js'
 import { Ava, Sheet, toast } from '../ui.jsx'
 import { vnd, TX_LABEL, dateTimeVN, ddmmyyyy } from '../util.js'
@@ -50,19 +52,32 @@ export function FeeCard({ m, fee }) {
 }
 
 export function PayInfo({ s, amount, memo }) {
+  const [img, setImg] = useState('')
+  const payload = s.pay_account ? vietqrPayload({ bank: s.pay_bank, account: s.pay_account, amount, memo }) : null
+  useEffect(() => {
+    let live = true
+    if (!payload) { setImg(''); return }
+    QRCode.toDataURL(payload, { margin: 1, width: 320, errorCorrectionLevel: 'M' }).then((u) => live && setImg(u)).catch(() => setImg(''))
+    return () => { live = false }
+  }, [payload])
   if (!s.pay_account) return <p className="small muted" style={{ margin: 0 }}>Chuyển tiền cho thủ quỹ{s.treasurer ? ` (${s.treasurer})` : ''}, sau đó gửi yêu cầu này.</p>
-  const qr = `https://img.vietqr.io/image/${encodeURIComponent(s.pay_bank)}-${encodeURIComponent(s.pay_account)}-compact2.png?amount=${amount || 0}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(s.pay_name || '')}`
+  const copy = (t) => navigator.clipboard?.writeText(t).then(() => toast('Đã copy')).catch(() => {})
   return (
-    <div className="card pad-s stack" style={{ gap: 8, borderColor: 'rgba(227,181,103,.35)' }}>
+    <div className="card pad-s stack" style={{ gap: 10, borderColor: 'rgba(227,181,103,.35)' }}>
       <div className="small" style={{ color: 'var(--gold)', fontWeight: 700, letterSpacing: '.08em' }}>CHUYỂN KHOẢN CHO THỦ QUỸ{s.treasurer ? ` · ${s.treasurer.toUpperCase()}` : ''}</div>
       <div className="row" style={{ alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
-        {amount > 0 && <img src={qr} alt="Mã QR chuyển khoản" width="150" height="150" style={{ borderRadius: 12, background: '#fff', padding: 4 }} />}
-        <div className="small stack" style={{ gap: 4 }}>
-          <div>Ngân hàng: <b>{s.pay_bank}</b></div>
-          <div>Số tài khoản: <b style={{ userSelect: 'all' }}>{s.pay_account}</b></div>
+        {amount > 0 && img ? (
+          <div style={{ background: '#fff', borderRadius: 14, padding: 8, textAlign: 'center' }}>
+            <img src={img} alt="Mã VietQR chuyển khoản" width="168" height="168" style={{ display: 'block' }} />
+            <div style={{ color: '#0b1a12', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', marginTop: 2 }}>VIETQR · NAPAS 247</div>
+          </div>
+        ) : <div className="small dim" style={{ width: 168 }}>Nhập số tiền để tạo mã QR.</div>}
+        <div className="small stack grow" style={{ gap: 6, minWidth: 180 }}>
+          <div>Ngân hàng: <b>{BANKS[s.pay_bank]?.[0] || s.pay_bank}</b></div>
+          <div>Số tài khoản: <b>{s.pay_account}</b> <button type="button" className="btn sm ghost" style={{ minHeight: 30 }} onClick={() => copy(s.pay_account)}>Copy</button></div>
           <div>Chủ tài khoản: <b>{s.pay_name}</b></div>
-          <div>Nội dung: <b style={{ userSelect: 'all' }}>{memo}</b></div>
-          <div className="dim">Quét QR bằng app ngân hàng, số tiền và nội dung điền sẵn.</div>
+          <div>Nội dung: <b>{asciiMemo(memo)}</b> <button type="button" className="btn sm ghost" style={{ minHeight: 30 }} onClick={() => copy(asciiMemo(memo))}>Copy</button></div>
+          <div className="dim">Mở app ngân hàng → Quét QR: số tiền và nội dung tự điền. Giữ nguyên nội dung để thủ quỹ đối soát.</div>
         </div>
       </div>
     </div>
@@ -76,6 +91,7 @@ export default function Finance({ state, me, token, reload }) {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [key, setKey] = useState(() => crypto.randomUUID())
+  const memo = asciiMemo('GYM ' + me.name).slice(0, 20) + ' ' + key.replace(/-/g, '').slice(0, 4).toUpperCase()
   const myTx = state.wallet_tx.filter((t) => t.member_id === me.id)
   const pending = myTx.filter((t) => t.status === 'pending')
   const f = state.fund
@@ -85,7 +101,7 @@ export default function Finance({ state, me, token, reload }) {
     const n = Number(String(amount).replace(/\D/g, ''))
     setBusy(true)
     try {
-      await rpc('member_request_deposit', { p_token: token, p_amount: n, p_note: note, p_key: key })
+      await rpc('member_request_deposit', { p_token: token, p_amount: n, p_note: memo + (note.trim() ? ' · ' + note.trim() : ''), p_key: key })
       setOpen(false); setAmount(''); setNote(''); setKey(crypto.randomUUID())
       toast('Đã gửi yêu cầu nạp. Chờ Admin xác nhận khi nhận được tiền.')
       reload()
@@ -187,10 +203,10 @@ export default function Finance({ state, me, token, reload }) {
               {[...new Set([Math.max(0, me.outstanding), fee, 500000, 1000000].filter((x) => x >= 1000))].slice(0, 4).map((v) => <button key={v} className="btn sm" onClick={() => setAmount(String(v))}>{vnd(v)}</button>)}
             </div>
             <div className="field">
-              <label htmlFor="dn">Ghi chú (hình thức chuyển)</label>
+              <label htmlFor="dn">Ghi chú thêm (không bắt buộc)</label>
               <input id="dn" className="input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="Ví dụ: CK Vietcombank 10:30" />
             </div>
-            <PayInfo s={state.settings} amount={Number(String(amount).replace(/\D/g, '')) || 0} memo={'GYM ' + me.name} />
+            <PayInfo s={state.settings} amount={Number(String(amount).replace(/\D/g, '')) || 0} memo={memo} />
             <p className="small muted" style={{ margin: 0 }}>Chuyển khoản xong mới bấm gửi. Tiền chỉ vào ví khi thủ quỹ xác nhận đã nhận đúng số tiền.</p>
             <button className="btn primary block" disabled={busy || !amount} onClick={deposit}>{busy ? 'Đang gửi…' : 'Gửi yêu cầu nạp'}</button>
           </div>

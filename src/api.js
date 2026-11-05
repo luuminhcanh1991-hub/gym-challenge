@@ -48,6 +48,8 @@ const ERR = {
   TOO_MANY_ATTEMPTS: 'Thử quá nhiều lần. Vui lòng đợi ít phút.',
   TRY_AGAIN: 'Hệ thống đang bận, thử lại.',
   NO_DUE: 'Thành viên chưa có ký quỹ tháng này.',
+  FUND_INSUFFICIENT: 'Quỹ chung không đủ để chi khoản này.',
+  WALLET_INSUFFICIENT: 'Số tiền vượt quá số dư ví của thành viên.',
   ALREADY_TRAINED: 'Hôm nay bạn đã check-in đã tập, không đổi sang báo vắng được.',
 }
 
