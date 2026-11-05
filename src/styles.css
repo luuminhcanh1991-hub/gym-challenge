@@ -69,7 +69,7 @@ h1, h2, h3 { margin: 0; font-family: var(--display); letter-spacing: .02em; line
 .sidebar { display: none; }
 @media (min-width: 960px) {
   .shell { display: grid; grid-template-columns: 248px 1fr; }
-  .tabbar, .topbar .only-m { display: none; }
+  .tabbar, .topbar.only-m { display: none; }
   .sidebar { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100dvh; padding: 22px 14px; border-right: 1px solid var(--line); background: var(--bg2); }
   .sidebar .brand { padding: 0 8px 18px; }
   .side-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; color: var(--muted); text-decoration: none; font-weight: 600; }

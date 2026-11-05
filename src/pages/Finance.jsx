@@ -161,7 +161,7 @@ export default function Finance({ state, me, token, reload }) {
                 onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))} placeholder="Ví dụ: 500.000" autoFocus />
             </div>
             <div className="row wrap" style={{ gap: 8 }}>
-              {[200000, 500000, 1000000, 1300000].map((v) => <button key={v} className="btn sm" onClick={() => setAmount(String(v))}>{vnd(v)}</button>)}
+              {[...new Set([Math.max(0, me.outstanding), fee, 500000, 1000000].filter((x) => x >= 1000))].slice(0, 4).map((v) => <button key={v} className="btn sm" onClick={() => setAmount(String(v))}>{vnd(v)}</button>)}
             </div>
             <div className="field">
               <label htmlFor="dn">Ghi chú (hình thức chuyển)</label>

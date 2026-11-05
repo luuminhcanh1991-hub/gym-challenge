@@ -37,7 +37,7 @@ export function ReportView({ rep, closing }) {
                 <td className="num" data-l="Vắng có lý do">{m.excused}</td>
                 <td className="num" data-l="Vắng không lý do" style={{ color: m.penalized ? 'var(--red)' : undefined }}>{m.penalized}</td>
                 <td className="num" data-l="Tiền phạt">{vnd(m.penalty_total)}</td>
-                {showFee && <td className="num" data-l="Phí tháng">{vnd(m.fee || 0)}{m.member_days != null && m.member_days < rep.mandatory_days ? <span className="small dim"> ({m.member_days}/{rep.mandatory_days} ngày)</span> : null}</td>}
+                {showFee && <td className="num" data-l="Phí tháng">{m.fee ? vnd(m.fee) : (rep.monthly_fee && m.member_days ? <span className="dim">≈ {vnd(Math.round(rep.monthly_fee * m.member_days / rep.mandatory_days / 1000) * 1000)} dự kiến</span> : vnd(0))}{m.member_days != null && m.member_days < rep.mandatory_days ? <span className="small dim"> ({m.member_days}/{rep.mandatory_days} ngày)</span> : null}</td>}
                 <td className="num" data-l="Số dư ví"><b>{vnd(m.balance)}</b></td>
               </tr>
             ))}

@@ -174,7 +174,7 @@ function AHome({ state, reload }) {
     <>
       <div className="grid g4">
         <div className="card stat hi"><div className="k">Quỹ chung</div><div className="v">{vnd(f.balance)}</div></div>
-        <div className="card stat"><div className="k">Phạt chưa thu</div><div className="v" style={{ color: f.penalty_uncollected ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected)}</div></div>
+        <div className="card stat"><div className="k">Chưa thu (phí + phạt)</div><div className="v" style={{ color: (f.penalty_uncollected + (f.fee_uncollected || 0)) ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected + (f.fee_uncollected || 0))}</div></div>
         <div className="card stat"><div className="k">Nạp chờ duyệt</div><div className="v">{pending.length}</div></div>
         <div className="card stat"><div className="k">Đã tập hôm nay</div><div className="v">{state.members.filter((m) => m.today?.status === 'trained').length}<small>/{state.members.length}</small></div></div>
       </div>
@@ -215,7 +215,10 @@ function AMembers({ state, reload }) {
           <div className="li" key={m.id} style={{ flexWrap: 'wrap' }}>
             <Ava m={m} />
             <div className="grow"><b>{m.name}</b>{m.locked && <span className="pill penalty no-dot" style={{ marginLeft: 8 }}>Đã khóa</span>}
-              <div className="small dim">Tham gia {ddmmyyyy(m.joined_on)} · {m.has_pin ? 'Đã có PIN' : 'Chưa tạo PIN'} · ví {vnd(m.balance)}</div></div>
+              <div className="small dim">Tham gia {ddmmyyyy(m.joined_on)} · {m.has_pin ? 'Đã có PIN' : 'Chưa tạo PIN'} · ví {vnd(m.balance)}{m.outstanding > 0 ? ` · nợ ${vnd(m.outstanding)}` : ''}
+                {state.settings.monthly_fee > 0 && (m.fee_month
+                  ? ` · phí tháng ${m.fee_month.status === 'voided' ? 'được miễn' : vnd(m.fee_month.amount) + ` (${m.fee_month.member_days}/${m.fee_month.month_days} ngày)`}`
+                  : m.fee_preview?.amount ? ` · phí dự kiến ${vnd(m.fee_preview.amount)} (${m.fee_preview.member_days}/${m.fee_preview.month_days} ngày, thu ngày ${ddmmyyyy(m.joined_on)})` : '')}</div></div>
             <button className="btn sm" onClick={() => setEdit({ ...m })}>Sửa</button>
           </div>
         ))}
