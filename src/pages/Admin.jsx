@@ -170,14 +170,22 @@ const call = async (fn, args, ok, reload) => {
 function AHome({ state, reload }) {
   const pending = state.wallet_tx.filter((t) => t.status === 'pending')
   const f = state.fund
+  const wallets = state.members.reduce((x, m) => x + Math.max(0, m.balance), 0)
   return (
     <>
       <div className="grid g4">
-        <div className="card stat hi"><div className="k">Quỹ chung</div><div className="v">{vnd(f.balance)}</div></div>
-        <div className="card stat"><div className="k">Còn thiếu (ký quỹ + phạt)</div><div className="v" style={{ color: (f.penalty_uncollected + (f.fee_uncollected || 0)) ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected + (f.fee_uncollected || 0))}</div></div>
-        <div className="card stat"><div className="k">Nạp chờ duyệt</div><div className="v">{pending.length}</div></div>
-        <div className="card stat"><div className="k">Đã tập hôm nay</div><div className="v">{state.members.filter((m) => m.today?.status === 'trained').length}<small>/{state.members.length}</small></div></div>
+        <div className="card stat hi"><div className="k">Tiền thủ quỹ đang giữ</div><div className="v">{vnd(wallets + f.balance)}</div><div className="small dim" style={{ marginTop: 6 }}>Phải khớp số dư tài khoản ngân hàng</div></div>
+        <div className="card stat"><div className="k">Trong ví thành viên</div><div className="v">{vnd(wallets)}</div><div className="small dim" style={{ marginTop: 6 }}>Ký quỹ, thuộc về từng người</div></div>
+        <div className="card stat"><div className="k">Quỹ chung</div><div className="v" style={{ color: 'var(--gold)' }}>{vnd(f.balance)}</div><div className="small dim" style={{ marginTop: 6 }}>Tiền phạt + đóng góp − đã chi</div></div>
+        <div className="card stat"><div className="k">Nạp chờ duyệt</div><div className="v">{pending.length}</div><div className="small dim" style={{ marginTop: 6 }}>Đã tập hôm nay {state.members.filter((m) => m.today?.status === 'trained').length}/{state.members.length}</div></div>
       </div>
+      {(f.fee_uncollected > 0 || f.penalty_uncollected > 0) && (
+        <div className="card section row wrap" style={{ marginTop: 12, gap: 18 }}>
+          {f.fee_uncollected > 0 && <div><div className="small muted">Ký quỹ thành viên chưa nạp đủ</div><b style={{ color: 'var(--red)' }}>{vnd(f.fee_uncollected)}</b></div>}
+          {f.penalty_uncollected > 0 && <div><div className="small muted">Tiền phạt còn nợ (ví không đủ)</div><b style={{ color: 'var(--red)' }}>{vnd(f.penalty_uncollected)}</b></div>}
+          <div className="small dim grow" style={{ minWidth: 220 }}>Đây là tiền thành viên CHƯA chuyển, không nằm trong quỹ. Xem từng người ở tab Thành viên.</div>
+        </div>
+      )}
       <div className="card section">
         <h3 className="display" style={{ fontSize: 22 }}>Yêu cầu nạp tiền chờ xác nhận</h3>
         {pending.length === 0 ? <div className="empty small">Không có yêu cầu nào.</div> : (
@@ -266,16 +274,16 @@ function AMoney({ state, reload }) {
             {state.members.map((m) => <option key={m.id} value={m.id}>{m.name} — ví {vnd(m.balance)}</option>)}
           </select>
           <select className="input" value={w.type} onChange={(e) => setW({ ...w, type: e.target.value })} aria-label="Loại">
-            <option value="deposit">Nạp tiền (đã nhận tiền)</option><option value="adjustment">Điều chỉnh (+/−, có lý do)</option>
+            <option value="deposit">Nạp tiền (đã nhận tiền)</option><option value="withdraw">Hoàn trả tiền cho thành viên (rút ký quỹ)</option><option value="adjustment">Điều chỉnh (+/−, có lý do)</option>
           </select>
           <input className="input" inputMode="numeric" placeholder={w.type === 'adjustment' ? 'Số tiền, âm để trừ: -50000' : 'Số tiền'} value={w.amount} onChange={(e) => setW({ ...w, amount: e.target.value })} aria-label="Số tiền" />
           <input className="input" placeholder="Ghi chú (bắt buộc)" value={w.note} onChange={(e) => setW({ ...w, note: e.target.value })} aria-label="Ghi chú" />
-          <button className="btn primary" onClick={async () => (await askConfirm('Ghi nhận giao dịch này? Giao dịch không thể sửa/xóa.')) && (await call('admin_wallet_entry', { p_member: w.member, p_type: w.type, p_amount: num(w.amount), p_note: w.note }, 'Đã ghi nhận.', reload)) && setW({ ...w, amount: '', note: '' })}>Ghi nhận</button>
+          <button className="btn primary" onClick={async () => (await askConfirm('Ghi nhận giao dịch này? Giao dịch không thể sửa/xóa.')) && (await call('admin_wallet_entry', { p_member: w.member, p_type: w.type === 'withdraw' ? 'adjustment' : w.type, p_amount: w.type === 'withdraw' ? -Math.abs(num(w.amount)) : num(w.amount), p_note: w.type === 'withdraw' ? 'Hoàn trả tiền: ' + w.note : w.note }, 'Đã ghi nhận.', reload)) && setW({ ...w, amount: '', note: '' })}>Ghi nhận</button>
         </div>
         <div className="card stack">
           <h3 className="display" style={{ fontSize: 22 }}>Quỹ chung · {vnd(state.fund.balance)}</h3>
           <select className="input" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })} aria-label="Loại">
-            <option value="contribution">Đóng góp bổ sung</option><option value="expense">Chi quỹ</option><option value="adjustment">Điều chỉnh (+/−)</option>
+            <option value="contribution">Đóng góp bổ sung</option><option value="expense">Chi quỹ (đi ăn uống, liên hoan…)</option><option value="adjustment">Điều chỉnh (+/−)</option>
           </select>
           <input className="input" inputMode="numeric" placeholder="Số tiền" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} aria-label="Số tiền" />
           <input className="input" placeholder="Ghi chú (bắt buộc)" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} aria-label="Ghi chú" />

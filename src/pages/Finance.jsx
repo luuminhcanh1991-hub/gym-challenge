@@ -121,10 +121,12 @@ export default function Finance({ state, me, token, reload }) {
 
       {tab === 'fund' && (
         <>
-          <div className="card stat hi"><div className="k">Số dư quỹ chung</div><div className="v" style={{ fontSize: 46 }}>{vnd(f.balance)}</div></div>
+          <div className="card stat hi"><div className="k">Số dư quỹ chung</div><div className="v" style={{ fontSize: 46 }}>{vnd(f.balance)}</div>
+            <p className="small muted" style={{ margin: '8px 0 0' }}>Quỹ chung = tiền phạt + đóng góp thêm − các khoản nhóm đã chi (liên hoan, ăn uống…). Ký quỹ trong ví từng người KHÔNG nằm trong quỹ. Thủ quỹ giữ tiền và ghi lại mỗi lần chi.</p>
+          </div>
           <div className="grid g4 section" style={{ marginTop: 12 }}>
             <div className="card stat"><div className="k">Phạt đã thu</div><div className="v">{vnd(f.penalty_collected)}</div></div>
-            <div className="card stat"><div className="k">Phạt chưa thu</div><div className="v" style={{ color: f.penalty_uncollected ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected)}</div></div>
+            <div className="card stat"><div className="k">Phạt còn nợ</div><div className="v" style={{ color: f.penalty_uncollected ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected)}</div></div>
             {f.fee_collected > 0 && <div className="card stat"><div className="k">Phí tháng (cũ)</div><div className="v">{vnd(f.fee_collected)}</div></div>}
             <div className="card stat"><div className="k">Đóng góp thêm</div><div className="v">{vnd(f.contributions)}</div></div>
             <div className="card stat"><div className="k">Đã chi</div><div className="v">{vnd(f.expenses)}</div></div>

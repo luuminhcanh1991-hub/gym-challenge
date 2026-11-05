@@ -1,12 +1,12 @@
 // Service worker tối giản: chỉ cache giao diện; dữ liệu luôn lấy trực tiếp từ Supabase.
-const CACHE = 'gc-shell-v1'
+const CACHE = 'gc-shell-v2'
 self.addEventListener('install', (e) => { self.skipWaiting() })
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()))
 })
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url)
-  if (e.request.method !== 'GET' || url.origin !== self.location.origin) return
+  if (e.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.endsWith('version.json')) return
   e.respondWith(
     fetch(e.request)
       .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return res })

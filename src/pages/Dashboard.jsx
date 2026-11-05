@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Ava, Icon } from '../ui.jsx'
-import { vnd, monthLabel, REASONS, timeVN, WEEKDAY_FULL, isoDow, ddmmyyyy, shiftMonth } from '../util.js'
+import { vnd, dateTimeVN, TX_LABEL, monthLabel, REASONS, timeVN, WEEKDAY_FULL, isoDow, ddmmyyyy, shiftMonth } from '../util.js'
 
 function useCountdown(serverNow, today) {
   const offset = useMemo(() => new Date(serverNow).getTime() - Date.now(), [serverNow])
@@ -48,6 +48,7 @@ export default function Dashboard({ state, me }) {
           <Icon n="right" width="18" />
         </a>
       )}
+      {me && <WalletPeek state={state} me={me} />}
       <div className="grid g4 section" style={{ marginTop: 14 }}>
         <div className="card stat"><div className="k">Thành viên</div><div className="v">{state.members.length}</div></div>
         <div className="card stat hi"><div className="k">Buổi tập tháng này</div><div className="v">{trainedMonth}</div></div>
@@ -79,5 +80,27 @@ function TodayList({ title, items, render, cls, empty = 'Chưa có ai' }) {
         </div>
       )}
     </div>
+  )
+}
+
+function WalletPeek({ state, me }) {
+  const tx = state.wallet_tx.filter((t) => t.member_id === me.id && t.status !== 'rejected').slice(0, 3)
+  return (
+    <a href="#/finance" className="card section" style={{ marginTop: 14, display: 'block', textDecoration: 'none', color: 'inherit' }}>
+      <div className="row between">
+        <div><div className="small muted" style={{ fontWeight: 700, letterSpacing: '.06em' }}>VÍ KÝ QUỸ CỦA BẠN</div><div className="display" style={{ fontSize: 30, fontWeight: 800, color: 'var(--neon)' }}>{vnd(me.balance)}</div></div>
+        <Icon n="right" width="18" />
+      </div>
+      {tx.length > 0 && (
+        <div className="list" style={{ marginTop: 6 }}>
+          {tx.map((t) => (
+            <div className="li" key={t.id} style={{ padding: '8px 0' }}>
+              <div className="grow small"><b>{TX_LABEL[t.type] || t.type}</b>{t.status === 'pending' ? ' · chờ xác nhận' : ''}<div className="dim">{dateTimeVN(t.created_at)}{t.note ? ' · ' + t.note : ''}</div></div>
+              <span className={'amt ' + (t.status === 'pending' ? '' : t.amount >= 0 ? 'plus' : 'minus')} style={{ fontSize: 17 }}>{t.amount > 0 ? '+' : ''}{vnd(t.amount)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </a>
   )
 }
