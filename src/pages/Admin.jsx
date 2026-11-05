@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase, rpc, errText, RECOVERY } from '../api.js'
-import { Ava, Brand, Icon, Sheet, toast } from '../ui.jsx'
+import { Ava, Brand, Icon, Sheet, toast, askConfirm, askText } from '../ui.jsx'
 import { TxList } from './Finance.jsx'
 import { MonthNav } from './Calendar.jsx'
 import { ReportView, exportExcel } from './Report.jsx'
@@ -189,8 +189,8 @@ function AHome({ state, reload }) {
                   {m && <Ava m={m} size="sm" />}
                   <div className="grow"><b>{m?.name}</b> <span className="amt plus" style={{ fontSize: 18 }}>{vnd(t.amount)}</span><div className="small dim">{dateTimeVN(t.created_at)}{t.note ? ' · ' + t.note : ''}</div></div>
                   <div className="row" style={{ gap: 8 }}>
-                    <button className="btn sm danger" onClick={() => confirm('Từ chối yêu cầu này?') && call('admin_decide_deposit', { p_id: t.id, p_approve: false, p_note: null }, 'Đã từ chối.', reload)}>Từ chối</button>
-                    <button className="btn sm primary" onClick={() => confirm(`Xác nhận đã nhận ${vnd(t.amount)} từ ${m?.name}?`) && call('admin_decide_deposit', { p_id: t.id, p_approve: true, p_note: null }, 'Đã xác nhận, tiền đã vào ví.', reload)}>Đã nhận tiền</button>
+                    <button className="btn sm danger" onClick={async () => (await askConfirm('Từ chối yêu cầu này?')) && call('admin_decide_deposit', { p_id: t.id, p_approve: false, p_note: null }, 'Đã từ chối.', reload)}>Từ chối</button>
+                    <button className="btn sm primary" onClick={async () => (await askConfirm(`Xác nhận đã nhận ${vnd(t.amount)} từ ${m?.name}?`)) && call('admin_decide_deposit', { p_id: t.id, p_approve: true, p_note: null }, 'Đã xác nhận, tiền đã vào ví.', reload)}>Đã nhận tiền</button>
                   </div>
                 </div>
               )
@@ -232,10 +232,13 @@ function AMembers({ state, reload }) {
               <>
                 <button className="btn primary block" onClick={async () => (await call('admin_update_member', { p_id: edit.id, p_name: edit.name, p_color: edit.color, p_locked: null }, 'Đã lưu.', reload)) && setEdit(null)}>Lưu</button>
                 <div className="grid g2">
-                  <button className="btn" onClick={async () => confirm('Đặt lại PIN? Thành viên sẽ tự tạo PIN mới ở lần đăng nhập tới.') && (await call('admin_reset_pin', { p_id: edit.id }, 'Đã đặt lại PIN.', reload)) && setEdit(null)}><Icon n="lock" width="18" />Đặt lại PIN</button>
+                  <button className="btn" onClick={async () => (await askConfirm('Đặt lại PIN? Thành viên sẽ tự tạo PIN mới ở lần đăng nhập tới.')) && (await call('admin_reset_pin', { p_id: edit.id }, 'Đã đặt lại PIN.', reload)) && setEdit(null)}><Icon n="lock" width="18" />Đặt lại PIN</button>
                   <button className="btn" onClick={async () => (await call('admin_update_member', { p_id: edit.id, p_name: null, p_color: null, p_locked: !edit.locked }, edit.locked ? 'Đã mở khóa.' : 'Đã khóa (tạm dừng, không bị phạt).', reload)) && setEdit(null)}>{edit.locked ? 'Mở khóa' : 'Khóa tài khoản'}</button>
                 </div>
-                <button className="btn danger block" onClick={async () => confirm(`Xóa ${edit.name}? Lịch sử tài chính vẫn được giữ.`) && (await call('admin_delete_member', { p_id: edit.id }, 'Đã xóa.', reload)) && setEdit(null)}>Xóa thành viên</button>
+                {edit.fee_month && edit.fee_month.status === 'active' && (
+                  <button className="btn block" onClick={async () => { const note = await askText('Lý do miễn phí tháng này cho ' + edit.name, 'Ví dụ: thành viên mới, nhóm miễn'); if (note && (await call('admin_void_due', { p_member: edit.id, p_month: state.today.slice(0, 8) + '01', p_note: note }, 'Đã miễn phí tháng, tiền đã thu được hoàn về ví.', reload))) setEdit(null) }}>Miễn phí tháng này ({vnd(edit.fee_month.amount)})</button>
+                )}
+                <button className="btn danger block" onClick={async () => (await askConfirm(`Xóa ${edit.name}? Lịch sử tài chính vẫn được giữ.`)) && (await call('admin_delete_member', { p_id: edit.id }, 'Đã xóa.', reload)) && setEdit(null)}>Xóa thành viên</button>
               </>
             ) : (
               <button className="btn primary block" onClick={async () => (await call('admin_add_member', { p_name: edit.name, p_color: edit.color, p_joined: edit.joined }, 'Đã thêm thành viên.', reload)) && setEdit(null)}>Thêm thành viên</button>
@@ -264,7 +267,7 @@ function AMoney({ state, reload }) {
           </select>
           <input className="input" inputMode="numeric" placeholder={w.type === 'adjustment' ? 'Số tiền, âm để trừ: -50000' : 'Số tiền'} value={w.amount} onChange={(e) => setW({ ...w, amount: e.target.value })} aria-label="Số tiền" />
           <input className="input" placeholder="Ghi chú (bắt buộc)" value={w.note} onChange={(e) => setW({ ...w, note: e.target.value })} aria-label="Ghi chú" />
-          <button className="btn primary" onClick={async () => confirm('Ghi nhận giao dịch này? Giao dịch không thể sửa/xóa.') && (await call('admin_wallet_entry', { p_member: w.member, p_type: w.type, p_amount: num(w.amount), p_note: w.note }, 'Đã ghi nhận.', reload)) && setW({ ...w, amount: '', note: '' })}>Ghi nhận</button>
+          <button className="btn primary" onClick={async () => (await askConfirm('Ghi nhận giao dịch này? Giao dịch không thể sửa/xóa.')) && (await call('admin_wallet_entry', { p_member: w.member, p_type: w.type, p_amount: num(w.amount), p_note: w.note }, 'Đã ghi nhận.', reload)) && setW({ ...w, amount: '', note: '' })}>Ghi nhận</button>
         </div>
         <div className="card stack">
           <h3 className="display" style={{ fontSize: 22 }}>Quỹ chung · {vnd(state.fund.balance)}</h3>
@@ -273,7 +276,7 @@ function AMoney({ state, reload }) {
           </select>
           <input className="input" inputMode="numeric" placeholder="Số tiền" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} aria-label="Số tiền" />
           <input className="input" placeholder="Ghi chú (bắt buộc)" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} aria-label="Ghi chú" />
-          <button className="btn primary" onClick={async () => confirm('Ghi nhận giao dịch quỹ?') && (await call('admin_fund_entry', { p_type: f.type, p_amount: num(f.amount), p_note: f.note }, 'Đã ghi nhận.', reload)) && setF({ ...f, amount: '', note: '' })}>Ghi nhận</button>
+          <button className="btn primary" onClick={async () => (await askConfirm('Ghi nhận giao dịch quỹ?')) && (await call('admin_fund_entry', { p_type: f.type, p_amount: num(f.amount), p_note: f.note }, 'Đã ghi nhận.', reload)) && setF({ ...f, amount: '', note: '' })}>Ghi nhận</button>
         </div>
       </div>
       <div className="grid gm2 section">
@@ -303,7 +306,7 @@ function ADays({ state, reload, month, setMonth }) {
         <option value="admin_excused">Miễn phạt (xanh dương)</option><option value="trained">Xác nhận đã tập</option><option value="clear">Xóa trạng thái (tính phạt lại nếu ngày đã qua)</option>
       </select>
       <input className="input" placeholder="Lý do điều chỉnh (bắt buộc)" value={note} onChange={(e) => setNote(e.target.value)} aria-label="Lý do" />
-      <button className="btn primary" onClick={async () => confirm('Áp dụng điều chỉnh?') && (await call('admin_set_day', { p_member: m, p_day: day, p_status: status, p_note: note }, 'Đã điều chỉnh.', () => reload(day.slice(0, 8) + '01'))) && setNote('')}>Áp dụng</button>
+      <button className="btn primary" onClick={async () => (await askConfirm('Áp dụng điều chỉnh?')) && (await call('admin_set_day', { p_member: m, p_day: day, p_status: status, p_note: note }, 'Đã điều chỉnh.', () => reload(day.slice(0, 8) + '01'))) && setNote('')}>Áp dụng</button>
     </div>
   )
 }
@@ -315,13 +318,16 @@ function ASettings({ state, reload }) {
   async function save() {
     const off = v.off_text.split(/[\s,;]+/).filter(Boolean)
     if (off.some((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d))) return toast('Ngày nghỉ thêm phải dạng YYYY-MM-DD.', true)
-    if (!confirm('Lưu cài đặt? Chỉ áp dụng cho các ngày chưa chốt.')) return
-    await call('admin_update_settings', { p: { penalty_amount: Number(v.penalty_amount), workdays: v.workdays, off_dates: off, checkin_start: v.checkin_start, checkin_end: v.checkin_end, challenge_start: v.challenge_start, allow_self_join: !!v.allow_self_join, join_code: v.join_code || '' } }, 'Đã lưu cài đặt.', reload)
+    if (!(await askConfirm('Lưu cài đặt? Chỉ áp dụng cho các ngày chưa chốt.'))) return
+    await call('admin_update_settings', { p: { monthly_fee: Number(v.monthly_fee || 0), penalty_amount: Number(v.penalty_amount), workdays: v.workdays, off_dates: off, checkin_start: v.checkin_start, checkin_end: v.checkin_end, challenge_start: v.challenge_start, allow_self_join: !!v.allow_self_join, join_code: v.join_code || '' } }, 'Đã lưu cài đặt.', reload)
   }
   return (
     <div className="card stack" style={{ maxWidth: 620 }}>
       <h3 className="display" style={{ fontSize: 22 }}>Quy định</h3>
       <div className="field"><label htmlFor="pa">Mức phạt / ngày (VNĐ)</label><input id="pa" className="input" inputMode="numeric" value={v.penalty_amount} onChange={(e) => setV({ ...v, penalty_amount: e.target.value.replace(/\D/g, '') })} /></div>
+      <div className="field"><label htmlFor="mf">Phí tham gia tháng (VNĐ, 0 = không thu)</label><input id="mf" className="input" inputMode="numeric" value={v.monthly_fee ?? 0} onChange={(e) => setV({ ...v, monthly_fee: e.target.value.replace(/\D/g, '') })} />
+        <span className="small dim">Tính theo ngày: người vào giữa tháng đóng = phí × (ngày bắt buộc còn lại ÷ {state.month_days} ngày bắt buộc của tháng). Ví dụ phí {Number(v.monthly_fee || 0).toLocaleString('vi-VN')}đ, còn 10 ngày → {(Math.round((Number(v.monthly_fee || 0) * 10) / (state.month_days || 1) / 1000) * 1000).toLocaleString('vi-VN')}đ. Thu tự động đầu tháng / khi tham gia.</span>
+      </div>
       <div className="field"><label>Ngày bắt buộc tập</label>
         <div className="daychips">{[1, 2, 3, 4, 5, 6, 7].map((d) => <button key={d} className={v.workdays.includes(d) ? 'on' : ''} onClick={() => toggle(d)} aria-pressed={v.workdays.includes(d)}>{WEEKDAYS[d - 1]}</button>)}</div>
       </div>
@@ -358,7 +364,7 @@ function AReport({ state, reload, month, setMonth }) {
         <div className="row" style={{ gap: 8 }}>
           <button className="btn sm" onClick={() => exportExcel(rep, state.month.slice(0, 7))}><Icon n="download" width="18" />Excel</button>
           <button className="btn sm" onClick={() => window.print()}><Icon n="download" width="18" />PDF</button>
-          <button className="btn sm primary" disabled={!over} title={over ? '' : 'Tháng chưa kết thúc'} onClick={() => confirm('Chốt tháng này? Bản chốt sẽ được lưu để xem lại.') && call('admin_close_month', { p_month: state.month }, 'Đã chốt tháng.', () => reload(state.month))}>{state.closing ? 'Chốt lại' : 'Chốt tháng'}</button>
+          <button className="btn sm primary" disabled={!over} title={over ? '' : 'Tháng chưa kết thúc'} onClick={async () => (await askConfirm('Chốt tháng này? Bản chốt sẽ được lưu để xem lại.')) && call('admin_close_month', { p_month: state.month }, 'Đã chốt tháng.', () => reload(state.month))}>{state.closing ? 'Chốt lại' : 'Chốt tháng'}</button>
         </div>
       </div>
       <ReportView rep={rep} closing={state.closing} />

@@ -9,3 +9,4 @@ psql -q -d gymtest -v ON_ERROR_STOP=1 -f ../migrations/001_gym_challenge.sql 2>/
 for f in ../migrations/0[0-9][0-9]_*.sql; do [ "$f" = ../migrations/001_gym_challenge.sql ] && continue; psql -q -d gymtest -v ON_ERROR_STOP=1 -f "$f" 2>&1 | grep -v NOTICE || true; psql -q -d gymtest -v ON_ERROR_STOP=1 -f "$f" >/dev/null 2>&1; done
 psql -q -d gymtest -f 10_rules.sql 2>&1 | grep -E 'PASS|FAIL|ERROR'
 psql -q -d gymtest -f 30_join_recovery.sql 2>&1 | grep -E 'PASS|FAIL|ERROR'
+psql -q -d gymtest -f 40_monthly_fee.sql 2>&1 | grep -E 'PASS|FAIL|ERROR'

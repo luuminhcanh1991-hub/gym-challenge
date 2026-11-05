@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { configured, rpc, session, errText, RECOVERY } from './api.js'
-import { Brand, Icon, Toaster, toast } from './ui.jsx'
+import { Brand, Icon, Toaster, toast, Dialogs } from './ui.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import CheckIn from './pages/CheckIn.jsx'
@@ -39,8 +39,8 @@ const SIDE = [
 export default function App() {
   const route = useRoute()
   if (!configured) return <Setup />
-  if (RECOVERY || route.startsWith('admin')) return <><Admin /><Toaster /></>
-  return <><MemberApp route={route} /><Toaster /></>
+  if (RECOVERY || route.startsWith('admin')) return <><Admin /><Toaster /><Dialogs /></>
+  return <><MemberApp route={route} /><Toaster /><Dialogs /></>
 }
 
 function MemberApp({ route }) {

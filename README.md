@@ -28,7 +28,7 @@
 
 ```
 supabase/migrations/001_gym_challenge.sql   # toàn bộ schema, RLS, hàm nghiệp vụ, pg_cron
-supabase/tests/                              # 51 kiểm thử luật chơi + đồng thời (chạy trong CI)
+supabase/tests/                              # 89 kiểm thử luật chơi + đồng thời (chạy trong CI)
 src/                                         # ứng dụng React
 .github/workflows/deploy.yml                 # test DB → build → deploy Pages (mỗi lần push main)
 .github/workflows/backup.yml                 # sao lưu DB hằng tuần (tùy chọn)

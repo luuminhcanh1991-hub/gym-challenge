@@ -27,6 +27,26 @@ export function TxList({ items, members, showMember, empty = 'Chưa có giao d�
   )
 }
 
+export function FeeCard({ m, fee }) {
+  const d = m.fee_month, pv = m.fee_preview || {}
+  const amount = d ? d.amount : pv.amount, md = d ? d.member_days : pv.member_days, td = d ? d.month_days : pv.month_days
+  const left = d ? Math.max(0, d.amount - d.paid) : amount
+  return (
+    <div className="card section" style={{ marginTop: 12, borderColor: 'rgba(227,181,103,.35)' }}>
+      <div className="row between" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <div className="small" style={{ color: 'var(--gold)', fontWeight: 700, letterSpacing: '.08em' }}>PHÍ THAM GIA THÁNG NÀY</div>
+          <div className="display" style={{ fontSize: 34, fontWeight: 800 }}>{vnd(amount)}</div>
+        </div>
+        {d && d.status === 'voided' ? <span className="pill admin">Được miễn</span> : left === 0 ? <span className="pill trained">Đã đóng đủ</span> : <span className="pill penalty">Còn {vnd(left)}</span>}
+      </div>
+      <p className="small muted" style={{ margin: '6px 0 0' }}>
+        {vnd(fee)} × {md}/{td} ngày bắt buộc{md < td ? ' (tính từ ngày bạn tham gia)' : ''}. Tự trừ từ ví; ví thiếu thì ghi nợ, nạp thêm sẽ tự trả.
+      </p>
+    </div>
+  )
+}
+
 export default function Finance({ state, me, token, reload }) {
   const [tab, setTab] = useState('wallet')
   const [open, setOpen] = useState(false)
@@ -37,6 +57,7 @@ export default function Finance({ state, me, token, reload }) {
   const myTx = state.wallet_tx.filter((t) => t.member_id === me.id)
   const pending = myTx.filter((t) => t.status === 'pending')
   const f = state.fund
+  const fee = state.settings.monthly_fee || 0
 
   async function deposit() {
     const n = Number(String(amount).replace(/\D/g, ''))
@@ -63,9 +84,10 @@ export default function Finance({ state, me, token, reload }) {
           <div className="card stat hi">
             <div className="k">Số dư ví</div>
             <div className="v" style={{ fontSize: 46 }}>{vnd(me.balance)}</div>
-            {me.outstanding > 0 && <div style={{ color: 'var(--red)', fontWeight: 700, marginTop: 8 }}>Phạt chưa thanh toán: {vnd(me.outstanding)}</div>}
+            {me.outstanding > 0 && <div style={{ color: 'var(--red)', fontWeight: 700, marginTop: 8 }}>Chưa thanh toán (phí + phạt): {vnd(me.outstanding)}</div>}
             <button className="btn primary" style={{ marginTop: 16 }} onClick={() => setOpen(true)}>Nạp tiền vào ví</button>
           </div>
+          {fee > 0 && <FeeCard m={me} fee={fee} />}
           <div className="grid g3 section" style={{ marginTop: 12 }}>
             <div className="card stat"><div className="k">Đã nạp</div><div className="v">{vnd(me.deposited_total)}</div></div>
             <div className="card stat"><div className="k">Đã bị phạt</div><div className="v" style={{ color: me.penalty_amount_total ? 'var(--red)' : undefined }}>{vnd(me.penalty_amount_total)}</div></div>
@@ -81,6 +103,8 @@ export default function Finance({ state, me, token, reload }) {
           <div className="grid g4 section" style={{ marginTop: 12 }}>
             <div className="card stat"><div className="k">Phạt đã thu</div><div className="v">{vnd(f.penalty_collected)}</div></div>
             <div className="card stat"><div className="k">Phạt chưa thu</div><div className="v" style={{ color: f.penalty_uncollected ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected)}</div></div>
+            {(f.fee_collected > 0 || fee > 0) && <div className="card stat"><div className="k">Phí tháng đã thu</div><div className="v">{vnd(f.fee_collected)}</div></div>}
+            {f.fee_uncollected > 0 && <div className="card stat"><div className="k">Phí tháng chưa thu</div><div className="v" style={{ color: 'var(--red)' }}>{vnd(f.fee_uncollected)}</div></div>}
             <div className="card stat"><div className="k">Đóng góp thêm</div><div className="v">{vnd(f.contributions)}</div></div>
             <div className="card stat"><div className="k">Đã chi</div><div className="v">{vnd(f.expenses)}</div></div>
           </div>
@@ -111,14 +135,15 @@ export default function Finance({ state, me, token, reload }) {
       {tab === 'all' && (
         <div className="card">
           <table className="tbl">
-            <thead><tr><th>Thành viên</th><th className="num">Đã nạp</th><th className="num">Đã bị phạt</th><th className="num">Chưa thu</th><th className="num">Số dư</th></tr></thead>
+            <thead><tr><th>Thành viên</th><th className="num">Đã nạp</th><th className="num">Đã bị phạt</th><th className="num">Phí tháng</th><th className="num">Còn nợ</th><th className="num">Số dư</th></tr></thead>
             <tbody>
               {state.members.map((m) => (
                 <tr key={m.id}>
                   <td className="first">{m.name}</td>
                   <td className="num" data-l="Đã nạp">{vnd(m.deposited_total)}</td>
                   <td className="num" data-l="Đã bị phạt">{vnd(m.penalty_amount_total)}</td>
-                  <td className="num" data-l="Chưa thu" style={{ color: m.outstanding ? 'var(--red)' : undefined }}>{vnd(m.outstanding)}</td>
+                  <td className="num" data-l="Phí tháng">{m.fee_month ? vnd(m.fee_month.amount) : '—'}</td>
+                  <td className="num" data-l="Còn nợ" style={{ color: m.outstanding ? 'var(--red)' : undefined }}>{vnd(m.outstanding)}</td>
                   <td className="num" data-l="Số dư"><b>{vnd(m.balance)}</b></td>
                 </tr>
               ))}

@@ -37,26 +37,18 @@ export function Icon({ n, ...rest }) {
   )
 }
 
-export function Logo({ size = 34 }) {
-  return (
-    <svg className="brand-mark" width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-      <rect width="64" height="64" rx="16" fill="#0f1411" />
-      <rect x="1" y="1" width="62" height="62" rx="15" fill="none" stroke="#3dff7a" strokeOpacity=".35" strokeWidth="2" />
-      <rect x="10" y="24" width="6" height="16" rx="2" fill="#3dff7a" />
-      <rect x="48" y="24" width="6" height="16" rx="2" fill="#3dff7a" />
-      <rect x="16" y="20" width="6" height="24" rx="2" fill="#3dff7a" />
-      <rect x="42" y="20" width="6" height="24" rx="2" fill="#3dff7a" />
-      <path d="M22 32h20" stroke="#f5f7f6" strokeWidth="4" strokeLinecap="round" />
-      <path d="M35 14 27 33h6l-3 17 9-21h-6z" fill="#f5f7f6" />
-    </svg>
-  )
+const EMBLEM = import.meta.env.BASE_URL + 'brand/lifebalance-96.png'
+export const EMBLEM_LG = import.meta.env.BASE_URL + 'brand/lifebalance-640.png'
+
+export function Logo({ size = 38 }) {
+  return <img className="brand-mark" src={EMBLEM} width={size} height={size} alt="" aria-hidden="true" />
 }
 
 export function Brand() {
   return (
     <a className="brand" href="#/">
       <Logo />
-      <span className="brand-name">GYM <b>CHALLENGE</b></span>
+      <span className="brand-name">GYM <b>CHALLENGE</b><span className="brand-sub">LIFEBALANCE · TKS</span></span>
     </a>
   )
 }
@@ -96,7 +88,7 @@ export function Toaster() {
 export function celebrate(text = 'Tuyệt vời!') {
   const root = document.createElement('div')
   root.className = 'confetti'
-  const colors = ['#3dff7a', '#f5f7f6', '#ffd23f', '#4da3ff', '#1fcf5a']
+  const colors = ['#45c482', '#f1e7d3', '#e3b567', '#1f8a53', '#ffffff']
   for (let i = 0; i < 90; i++) {
     const p = document.createElement('i')
     p.style.left = Math.random() * 100 + 'vw'
@@ -118,4 +110,28 @@ export function celebrate(text = 'Tuyệt vời!') {
 
 export function Busy({ on, children, ...p }) {
   return <button {...p} disabled={on || p.disabled}>{on ? 'Đang xử lý…' : children}</button>
+}
+
+// Hộp thoại trong app (thay confirm/prompt của trình duyệt)
+let dlgFn = null
+export const askConfirm = (message, okLabel = 'Đồng ý') => new Promise((res) => dlgFn ? dlgFn({ message, okLabel, res }) : res(window.confirm(message)))
+export const askText = (message, placeholder = '') => new Promise((res) => dlgFn ? dlgFn({ message, input: true, placeholder, res }) : res(window.prompt(message)))
+export function Dialogs() {
+  const [d, setD] = useState(null)
+  const [val, setVal] = useState('')
+  useEffect(() => { dlgFn = (x) => { setVal(''); setD(x) }; return () => { dlgFn = null } }, [])
+  if (!d) return null
+  const close = (v) => { d.res(v); setD(null) }
+  return (
+    <div className="overlay" onClick={() => close(d.input ? null : false)}>
+      <div className="sheet" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+        <p style={{ margin: '0 0 14px', fontWeight: 600, fontSize: 17 }}>{d.message}</p>
+        {d.input && <input className="input" autoFocus value={val} placeholder={d.placeholder} onChange={(e) => setVal(e.target.value)} aria-label={d.message} style={{ marginBottom: 14 }} />}
+        <div className="grid g2">
+          <button className="btn" onClick={() => close(d.input ? null : false)}>Hủy</button>
+          <button className="btn primary" disabled={d.input && !val.trim()} onClick={() => close(d.input ? val.trim() : true)}>{d.okLabel || 'Đồng ý'}</button>
+        </div>
+      </div>
+    </div>
+  )
 }

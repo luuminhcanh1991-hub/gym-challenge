@@ -41,6 +41,13 @@ export default function Dashboard({ state, me }) {
         )}
       </section>
 
+      {me && me.outstanding > 0 && (
+        <a href="#/finance" className="card row" style={{ marginTop: 14, textDecoration: 'none', color: 'inherit', borderColor: 'rgba(255,90,103,.45)' }}>
+          <Icon n="alert" width="22" style={{ color: 'var(--red)' }} />
+          <div className="grow"><b>Bạn còn nợ {vnd(me.outstanding)}</b><div className="small muted">Nạp thêm vào ví, hệ thống sẽ tự trả phí/phạt còn thiếu.</div></div>
+          <Icon n="right" width="18" />
+        </a>
+      )}
       <div className="grid g4 section" style={{ marginTop: 14 }}>
         <div className="card stat"><div className="k">Thành viên</div><div className="v">{state.members.length}</div></div>
         <div className="card stat hi"><div className="k">Buổi tập tháng này</div><div className="v">{trainedMonth}</div></div>

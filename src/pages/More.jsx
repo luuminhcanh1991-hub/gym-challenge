@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { rpc, errText } from '../api.js'
-import { Ava, Icon, Sheet, toast } from '../ui.jsx'
+import { Ava, Icon, Sheet, toast, askConfirm } from '../ui.jsx'
 import { RecoveryCode } from './Login.jsx'
 
 export default function More({ me, token, logout, state }) {
   const [pinOpen, setPinOpen] = useState(false)
   const [rc, setRc] = useState(null)
   const newCode = async () => {
-    if (!confirm('Tạo mã khôi phục mới? Mã cũ (nếu có) sẽ hết hiệu lực.')) return
+    if (!(await askConfirm('Tạo mã khôi phục mới? Mã cũ (nếu có) sẽ hết hiệu lực.'))) return
     try { setRc(await rpc('member_new_recovery_code', { p_token: token })) } catch (e) { toast(errText(e), true) }
   }
   const [o, setO] = useState(''); const [n, setN] = useState(''); const [busy, setBusy] = useState(false)

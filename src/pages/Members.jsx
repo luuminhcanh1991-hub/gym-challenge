@@ -39,6 +39,12 @@ export default function Members({ state }) {
             <div className="row between small">
               <span className="muted">Đã bị phạt</span><b>{vnd(m.penalty_amount_total)}</b>
             </div>
+            {state.settings.monthly_fee > 0 && m.fee_month && (
+              <div className="row between small" style={{ marginTop: -6 }}>
+                <span className="muted">Phí tháng ({m.fee_month.member_days}/{m.fee_month.month_days} ngày)</span>
+                <b style={{ color: m.fee_month.status === 'voided' ? 'var(--blue)' : m.fee_month.paid >= m.fee_month.amount ? 'var(--neon)' : 'var(--red)' }}>{m.fee_month.status === 'voided' ? 'Miễn' : vnd(m.fee_month.amount)}</b>
+              </div>
+            )}
             <div className="row between small" style={{ marginTop: -6 }}>
               <span className="muted">Số dư ví</span>
               <b className={m.balance > 0 ? 'neon' : ''}>{vnd(m.balance)}{m.outstanding > 0 && <span style={{ color: 'var(--red)', fontWeight: 600 }}> · nợ {vnd(m.outstanding)}</span>}</b>

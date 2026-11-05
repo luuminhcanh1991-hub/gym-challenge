@@ -56,6 +56,6 @@ export const STATUS_LABEL = {
   rest: 'Ngày nghỉ', future: 'Sắp tới', pending: 'Chưa check-in', none: '—',
 }
 export const TX_LABEL = {
-  deposit: 'Nạp tiền', penalty_payment: 'Trừ phạt', refund: 'Hoàn phạt', adjustment: 'Điều chỉnh',
+  deposit: 'Nạp tiền', penalty_payment: 'Trừ phạt', fee_payment: 'Trừ phí tháng', fee_income: 'Thu phí tháng', refund: 'Hoàn phạt', adjustment: 'Điều chỉnh',
   penalty_income: 'Thu phạt', contribution: 'Đóng góp', expense: 'Chi quỹ',
 }

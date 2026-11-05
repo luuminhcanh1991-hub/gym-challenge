@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { rpc, errText } from '../api.js'
-import { Ava, Logo, Icon } from '../ui.jsx'
+import { Ava, Icon, EMBLEM_LG } from '../ui.jsx'
 
 const onlyDigits = (s) => s.replace(/\D/g, '').slice(0, 6)
 
 export default function Login({ onLogin }) {
   const [list, setList] = useState(null)
   const [canJoin, setCanJoin] = useState(false)
+  const [joinInfo, setJoinInfo] = useState(null)
   const [err, setErr] = useState('')
   const [mode, setMode] = useState('pick')   // pick | pin | join | recover | code
   const [pick, setPick] = useState(null)
@@ -18,7 +19,7 @@ export default function Login({ onLogin }) {
   const fetchList = () => {
     setErr('')
     rpc('list_members_public').then(setList).catch((e) => setErr(errText(e)))
-    rpc('join_info').then((r) => setCanJoin(!!r?.allow_self_join)).catch(() => {})
+    rpc('join_info').then((r) => { setCanJoin(!!r?.allow_self_join); setJoinInfo(r) }).catch(() => {})
   }
   useEffect(() => { fetchList() }, [])
 
@@ -29,7 +30,7 @@ export default function Login({ onLogin }) {
   const back = () => { setMode('pick'); setPick(null); setPin(''); setFirst(''); setErr('') }
 
   if (mode === 'code') return <Shell><RecoveryCode code={done.code} onNext={() => onLogin(done.s)} /></Shell>
-  if (mode === 'join') return <Shell><Join onBack={back} onDone={finish} /></Shell>
+  if (mode === 'join') return <Shell><Join onBack={back} onDone={finish} info={joinInfo} /></Shell>
   if (mode === 'recover') return <Shell><Recover m={pick} onBack={() => { setMode('pin'); setErr('') }} onDone={finish} /></Shell>
 
   const creating = pick && !pick.has_pin
@@ -90,9 +91,9 @@ function Shell({ children }) {
     <div className="login">
       <div className="login-box">
         <div className="stack" style={{ alignItems: 'center', textAlign: 'center', gap: 10 }}>
-          <Logo size={72} />
-          <h1 className="display" style={{ fontSize: 46, fontWeight: 800 }}>GYM <span className="neon">CHALLENGE</span></h1>
-          <div className="display neon" style={{ letterSpacing: '.2em', fontWeight: 700 }}>TẬP ĐỀU – KHÔNG BỎ CUỘC</div>
+          <img className="emblem" src={EMBLEM_LG} alt="LIFEBALANCE – Work hard. Live fully." />
+          <h1 className="display" style={{ fontSize: 44, fontWeight: 800, marginTop: 8 }}>GYM <span className="neon">CHALLENGE</span></h1>
+          <div className="display" style={{ letterSpacing: '.22em', fontWeight: 700, color: 'var(--gold)' }}>TẬP ĐỀU – KHÔNG BỎ CUỘC</div>
         </div>
         {children}
       </div>
@@ -131,7 +132,7 @@ function PinPad({ m, pin, err, busy, title, press, del, submit, footer }) {
   )
 }
 
-function Join({ onBack, onDone }) {
+function Join({ onBack, onDone, info }) {
   const [code, setCode] = useState(''); const [name, setName] = useState('')
   const [p1, setP1] = useState(''); const [p2, setP2] = useState('')
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
@@ -157,7 +158,7 @@ function Join({ onBack, onDone }) {
       </div>
       {err && <div style={{ color: 'var(--red)', fontWeight: 600 }} role="alert">{err}</div>}
       <button className="btn primary block" disabled={busy}>{busy ? 'Đang tạo…' : 'Tham gia'}</button>
-      <p className="small dim" style={{ margin: 0 }}>Phạt chỉ tính từ ngày bạn tham gia. Trước đó không bị tính.</p>
+      <p className="small dim" style={{ margin: 0 }}>Phạt chỉ tính từ ngày bạn tham gia.{info?.monthly_fee > 0 && <> Phí tháng này của bạn: <b style={{ color: 'var(--gold)' }}>{(info.fee_if_join_today || 0).toLocaleString('vi-VN')}đ</b> ({info.days_left}/{info.month_days} ngày bắt buộc còn lại, thay vì {info.monthly_fee.toLocaleString('vi-VN')}đ cả tháng).</>}</p>
       <button type="button" className="btn ghost" onClick={onBack}>← Quay lại</button>
     </form>
   )
