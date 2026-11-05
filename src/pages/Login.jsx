@@ -158,7 +158,7 @@ function Join({ onBack, onDone, info }) {
       </div>
       {err && <div style={{ color: 'var(--red)', fontWeight: 600 }} role="alert">{err}</div>}
       <button className="btn primary block" disabled={busy}>{busy ? 'Đang tạo…' : 'Tham gia'}</button>
-      <p className="small dim" style={{ margin: 0 }}>Phạt chỉ tính từ ngày bạn tham gia.{info?.monthly_fee > 0 && <> Phí tháng này của bạn: <b style={{ color: 'var(--gold)' }}>{(info.fee_if_join_today || 0).toLocaleString('vi-VN')}đ</b> ({info.days_left}/{info.month_days} ngày bắt buộc còn lại{info.days_left < info.month_days ? `, thay vì ${info.monthly_fee.toLocaleString('vi-VN')}đ cả tháng` : ''}).</>}</p>
+      <p className="small dim" style={{ margin: 0 }}>Phạt chỉ tính từ ngày bạn tham gia.{info?.monthly_fee > 0 && <> Ký quỹ tháng này của bạn: <b style={{ color: 'var(--gold)' }}>{(info.fee_if_join_today || 0).toLocaleString('vi-VN')}đ</b> ({info.days_left}/{info.month_days} ngày bắt buộc còn lại{info.days_left < info.month_days ? `, thay vì ${info.monthly_fee.toLocaleString('vi-VN')}đ cả tháng` : ''}).</>}</p>
       <button type="button" className="btn ghost" onClick={onBack}>← Quay lại</button>
     </form>
   )

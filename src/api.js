@@ -47,7 +47,8 @@ const ERR = {
   NO_RECOVERY_CODE: 'Tài khoản chưa có mã khôi phục. Nhờ Admin đặt lại PIN.',
   TOO_MANY_ATTEMPTS: 'Thử quá nhiều lần. Vui lòng đợi ít phút.',
   TRY_AGAIN: 'Hệ thống đang bận, thử lại.',
-  NO_DUE: 'Thành viên chưa có phí tháng này.',
+  NO_DUE: 'Thành viên chưa có ký quỹ tháng này.',
+  ALREADY_TRAINED: 'Hôm nay bạn đã check-in đã tập, không đổi sang báo vắng được.',
 }
 
 export function errText(e) {

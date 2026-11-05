@@ -70,8 +70,8 @@ set role anon;
 select member_checkin(:'tan') is not null;
 select member_register_absence(:'thanh', 'work', null) is not null;
 select member_checkin(:'thanh') is not null;                        -- đổi ý: vắng → đã tập
-select member_checkin(:'tgiap') is not null;
-select member_register_absence(:'tgiap', 'sick', null) is not null; -- đổi ý: đã tập → vắng
+select member_register_absence(:'tgiap', 'work', null) is not null;
+select member_register_absence(:'tgiap', 'sick', null) is not null; -- đổi lý do vắng trong ngày
 select t_eq((member_request_deposit(:'ttuan', 100000, 'CK Vietcombank', 'k-tuan-1')->>'ok')::boolean, true, '11a xin nạp tiền');
 select t_eq((member_request_deposit(:'ttuan', 100000, 'CK Vietcombank', 'k-tuan-1')->>'duplicate')::boolean, true, '11b bấm 2 lần không tạo giao dịch trùng');
 select t_eq((select (x->>'balance')::int from jsonb_array_elements(app_state(:'ttuan')->'members') x where x->>'id' = :'tuan'), 0, '11c tiền chưa vào ví khi Admin chưa xác nhận');

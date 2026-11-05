@@ -6,7 +6,7 @@ export async function exportExcel(rep, title) {
   const XLSX = await import('xlsx')
   const rows = rep.members.map((m) => ({
     'Thành viên': m.name, 'Ngày bắt buộc': rep.mandatory_days, 'Buổi tập': m.trained, 'Vắng có lý do': m.excused,
-    'Vắng không lý do': m.penalized, 'Tiền phạt (đ)': m.penalty_total, 'Ngày tham gia trong tháng': m.member_days ?? '', 'Phí tháng (đ)': m.fee ?? 0, 'Số dư ví (đ)': m.balance,
+    'Vắng không lý do': m.penalized, 'Tiền phạt (đ)': m.penalty_total, 'Ngày tham gia trong tháng': m.member_days ?? '', 'Ký quỹ tháng (đ)': m.fee ?? 0, 'Đã nạp trong tháng (đ)': m.deposited ?? 0, 'Số dư ví (đ)': m.balance,
   }))
   rows.push({}, { 'Thành viên': 'Quỹ chung (đ)', 'Ngày bắt buộc': rep.fund_balance })
   const ws = XLSX.utils.json_to_sheet(rows)
@@ -28,7 +28,7 @@ export function ReportView({ rep, closing }) {
       </div>
       <div className="card">
         <table className="tbl">
-          <thead><tr><th>Thành viên</th><th className="num">Buổi tập</th><th className="num">Vắng có lý do</th><th className="num">Vắng không lý do</th><th className="num">Tiền phạt</th>{showFee && <th className="num">Phí tháng</th>}<th className="num">Số dư ví</th></tr></thead>
+          <thead><tr><th>Thành viên</th><th className="num">Buổi tập</th><th className="num">Vắng có lý do</th><th className="num">Vắng không lý do</th><th className="num">Tiền phạt</th>{showFee && <th className="num">Ký quỹ tháng</th>}<th className="num">Số dư ví</th></tr></thead>
           <tbody>
             {rep.members.map((m) => (
               <tr key={m.id}>
@@ -37,7 +37,7 @@ export function ReportView({ rep, closing }) {
                 <td className="num" data-l="Vắng có lý do">{m.excused}</td>
                 <td className="num" data-l="Vắng không lý do" style={{ color: m.penalized ? 'var(--red)' : undefined }}>{m.penalized}</td>
                 <td className="num" data-l="Tiền phạt">{vnd(m.penalty_total)}</td>
-                {showFee && <td className="num" data-l="Phí tháng">{m.fee ? vnd(m.fee) : (rep.monthly_fee && m.member_days ? <span className="dim">≈ {vnd(Math.round(rep.monthly_fee * m.member_days / rep.mandatory_days / 1000) * 1000)} dự kiến</span> : vnd(0))}{m.member_days != null && m.member_days < rep.mandatory_days ? <span className="small dim"> ({m.member_days}/{rep.mandatory_days} ngày)</span> : null}</td>}
+                {showFee && <td className="num" data-l="Ký quỹ tháng">{m.fee ? vnd(m.fee) : (rep.monthly_fee && m.member_days ? <span className="dim">≈ {vnd(Math.round(rep.monthly_fee * m.member_days / rep.mandatory_days / 1000) * 1000)} dự kiến</span> : vnd(0))}{m.member_days != null && m.member_days < rep.mandatory_days ? <span className="small dim"> ({m.member_days}/{rep.mandatory_days} ngày)</span> : null}</td>}
                 <td className="num" data-l="Số dư ví"><b>{vnd(m.balance)}</b></td>
               </tr>
             ))}

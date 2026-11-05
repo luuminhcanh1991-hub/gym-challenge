@@ -67,12 +67,12 @@ export default function CheckIn({ state, me, token, reload }) {
         </div>
       )}
 
-      {state.today_mandatory && t?.status !== 'admin_excused' && (
+      {state.today_mandatory && t?.status !== 'admin_excused' && !done && (
         <button className="btn block" style={{ maxWidth: 460 }} onClick={() => { setReason(t?.reason || null); setNote(t?.note || ''); setOpen(true) }}>
           {excused ? 'Đổi lý do vắng' : 'HÔM NAY TÔI KHÔNG THỂ TẬP'}
         </button>
       )}
-      {done && state.today_mandatory && <p className="small dim" style={{ maxWidth: 420, margin: 0 }}>Đổi sang báo vắng vẫn được trước khi hết ngày. Mọi thay đổi đều được lưu lịch sử.</p>}
+      {done && <p className="small dim" style={{ maxWidth: 420, margin: 0 }}>Đã ghi nhận buổi tập hôm nay. Mỗi ngày chỉ check-in 1 lần và không đổi sang báo vắng.</p>}
       <p className="small dim" style={{ margin: 0 }}>Khung giờ check-in: {s.checkin_start.slice(0, 5)} – {s.checkin_end.slice(0, 5)} · Hết ngày chưa tập và chưa báo lý do: phạt {s.penalty_amount.toLocaleString('vi-VN')}đ</p>
 
       {open && (

@@ -29,20 +29,42 @@ export function TxList({ items, members, showMember, empty = 'Chưa có giao d�
 
 export function FeeCard({ m, fee }) {
   const d = m.fee_month, pv = m.fee_preview || {}
-  const amount = d ? d.amount : pv.amount, md = d ? d.member_days : pv.member_days, td = d ? d.month_days : pv.month_days
-  const left = d ? Math.max(0, d.amount - d.paid) : amount
+  const required = pv.amount || 0, md = d ? d.member_days : pv.member_days, td = d ? d.month_days : pv.month_days
+  const topup = d ? d.amount : Math.max(0, required - Math.max(0, m.balance))
+  const left = d ? Math.max(0, d.amount - d.paid) : topup
   return (
     <div className="card section" style={{ marginTop: 12, borderColor: 'rgba(227,181,103,.35)' }}>
       <div className="row between" style={{ alignItems: 'flex-start' }}>
         <div>
-          <div className="small" style={{ color: 'var(--gold)', fontWeight: 700, letterSpacing: '.08em' }}>PHÍ THAM GIA THÁNG NÀY</div>
-          <div className="display" style={{ fontSize: 34, fontWeight: 800 }}>{vnd(amount)}</div>
+          <div className="small" style={{ color: 'var(--gold)', fontWeight: 700, letterSpacing: '.08em' }}>KÝ QUỸ THÁNG NÀY</div>
+          <div className="display" style={{ fontSize: 34, fontWeight: 800 }}>{vnd(required)}</div>
         </div>
-        {d && d.status === 'voided' ? <span className="pill admin">Được miễn</span> : left === 0 ? <span className="pill trained">Đã đóng đủ</span> : <span className="pill penalty">Còn {vnd(left)}</span>}
+        {d && d.status === 'voided' ? <span className="pill admin">Được miễn</span> : left === 0 ? <span className="pill trained">Đã đủ</span> : <span className="pill penalty">Cần nạp {vnd(left)}</span>}
       </div>
       <p className="small muted" style={{ margin: '6px 0 0' }}>
-        {vnd(fee)} × {md}/{td} ngày bắt buộc{md < td ? ' (tính từ ngày bạn tham gia)' : ''}. Tự trừ từ ví; ví thiếu thì ghi nợ, nạp thêm sẽ tự trả.
+        {vnd(fee)} × {md}/{td} ngày bắt buộc{md < td ? ' (tính từ ngày bạn tham gia đến hết tháng)' : ''}. Tiền nằm trong ví của bạn; chỉ khi vắng không lý do mới trừ tiền phạt sang quỹ nhóm.
+        {d && d.amount < required ? ` Số dư tháng trước đã được tính, chỉ cần nạp thêm ${vnd(d.amount)}.` : ''}
       </p>
+    </div>
+  )
+}
+
+export function PayInfo({ s, amount, memo }) {
+  if (!s.pay_account) return <p className="small muted" style={{ margin: 0 }}>Chuyển tiền cho thủ quỹ{s.treasurer ? ` (${s.treasurer})` : ''}, sau đó gửi yêu cầu này.</p>
+  const qr = `https://img.vietqr.io/image/${encodeURIComponent(s.pay_bank)}-${encodeURIComponent(s.pay_account)}-compact2.png?amount=${amount || 0}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(s.pay_name || '')}`
+  return (
+    <div className="card pad-s stack" style={{ gap: 8, borderColor: 'rgba(227,181,103,.35)' }}>
+      <div className="small" style={{ color: 'var(--gold)', fontWeight: 700, letterSpacing: '.08em' }}>CHUYỂN KHOẢN CHO THỦ QUỸ{s.treasurer ? ` · ${s.treasurer.toUpperCase()}` : ''}</div>
+      <div className="row" style={{ alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+        {amount > 0 && <img src={qr} alt="Mã QR chuyển khoản" width="150" height="150" style={{ borderRadius: 12, background: '#fff', padding: 4 }} />}
+        <div className="small stack" style={{ gap: 4 }}>
+          <div>Ngân hàng: <b>{s.pay_bank}</b></div>
+          <div>Số tài khoản: <b style={{ userSelect: 'all' }}>{s.pay_account}</b></div>
+          <div>Chủ tài khoản: <b>{s.pay_name}</b></div>
+          <div>Nội dung: <b style={{ userSelect: 'all' }}>{memo}</b></div>
+          <div className="dim">Quét QR bằng app ngân hàng, số tiền và nội dung điền sẵn.</div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -84,7 +106,7 @@ export default function Finance({ state, me, token, reload }) {
           <div className="card stat hi">
             <div className="k">Số dư ví</div>
             <div className="v" style={{ fontSize: 46 }}>{vnd(me.balance)}</div>
-            {me.outstanding > 0 && <div style={{ color: 'var(--red)', fontWeight: 700, marginTop: 8 }}>Chưa thanh toán (phí + phạt): {vnd(me.outstanding)}</div>}
+            {me.outstanding > 0 && <div style={{ color: 'var(--red)', fontWeight: 700, marginTop: 8 }}>Còn thiếu (ký quỹ + phạt): {vnd(me.outstanding)}</div>}
             <button className="btn primary" style={{ marginTop: 16 }} onClick={() => setOpen(true)}>Nạp tiền vào ví</button>
           </div>
           {fee > 0 && <FeeCard m={me} fee={fee} />}
@@ -103,8 +125,7 @@ export default function Finance({ state, me, token, reload }) {
           <div className="grid g4 section" style={{ marginTop: 12 }}>
             <div className="card stat"><div className="k">Phạt đã thu</div><div className="v">{vnd(f.penalty_collected)}</div></div>
             <div className="card stat"><div className="k">Phạt chưa thu</div><div className="v" style={{ color: f.penalty_uncollected ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected)}</div></div>
-            {(f.fee_collected > 0 || fee > 0) && <div className="card stat"><div className="k">Phí tháng đã thu</div><div className="v">{vnd(f.fee_collected)}</div></div>}
-            {f.fee_uncollected > 0 && <div className="card stat"><div className="k">Phí tháng chưa thu</div><div className="v" style={{ color: 'var(--red)' }}>{vnd(f.fee_uncollected)}</div></div>}
+            {f.fee_collected > 0 && <div className="card stat"><div className="k">Phí tháng (cũ)</div><div className="v">{vnd(f.fee_collected)}</div></div>}
             <div className="card stat"><div className="k">Đóng góp thêm</div><div className="v">{vnd(f.contributions)}</div></div>
             <div className="card stat"><div className="k">Đã chi</div><div className="v">{vnd(f.expenses)}</div></div>
           </div>
@@ -135,15 +156,15 @@ export default function Finance({ state, me, token, reload }) {
       {tab === 'all' && (
         <div className="card">
           <table className="tbl">
-            <thead><tr><th>Thành viên</th><th className="num">Đã nạp</th><th className="num">Đã bị phạt</th><th className="num">Phí tháng</th><th className="num">Còn nợ</th><th className="num">Số dư</th></tr></thead>
+            <thead><tr><th>Thành viên</th><th className="num">Đã nạp</th><th className="num">Đã bị phạt</th><th className="num">Ký quỹ tháng</th><th className="num">Còn thiếu</th><th className="num">Số dư</th></tr></thead>
             <tbody>
               {state.members.map((m) => (
                 <tr key={m.id}>
                   <td className="first">{m.name}</td>
                   <td className="num" data-l="Đã nạp">{vnd(m.deposited_total)}</td>
                   <td className="num" data-l="Đã bị phạt">{vnd(m.penalty_amount_total)}</td>
-                  <td className="num" data-l="Phí tháng">{m.fee_month ? vnd(m.fee_month.amount) : '—'}</td>
-                  <td className="num" data-l="Còn nợ" style={{ color: m.outstanding ? 'var(--red)' : undefined }}>{vnd(m.outstanding)}</td>
+                  <td className="num" data-l="Ký quỹ tháng">{m.fee_preview?.amount ? vnd(m.fee_preview.amount) : '—'}</td>
+                  <td className="num" data-l="Còn thiếu" style={{ color: m.outstanding ? 'var(--red)' : undefined }}>{vnd(m.outstanding)}</td>
                   <td className="num" data-l="Số dư"><b>{vnd(m.balance)}</b></td>
                 </tr>
               ))}
@@ -167,7 +188,8 @@ export default function Finance({ state, me, token, reload }) {
               <label htmlFor="dn">Ghi chú (hình thức chuyển)</label>
               <input id="dn" className="input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="Ví dụ: CK Vietcombank 10:30" />
             </div>
-            <p className="small muted" style={{ margin: 0 }}>Chuyển tiền cho Admin, sau đó gửi yêu cầu này. Tiền chỉ vào ví khi Admin xác nhận đã nhận.</p>
+            <PayInfo s={state.settings} amount={Number(String(amount).replace(/\D/g, '')) || 0} memo={'GYM ' + me.name} />
+            <p className="small muted" style={{ margin: 0 }}>Chuyển khoản xong mới bấm gửi. Tiền chỉ vào ví khi thủ quỹ xác nhận đã nhận đúng số tiền.</p>
             <button className="btn primary block" disabled={busy || !amount} onClick={deposit}>{busy ? 'Đang gửi…' : 'Gửi yêu cầu nạp'}</button>
           </div>
         </Sheet>

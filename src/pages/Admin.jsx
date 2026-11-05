@@ -174,7 +174,7 @@ function AHome({ state, reload }) {
     <>
       <div className="grid g4">
         <div className="card stat hi"><div className="k">Quỹ chung</div><div className="v">{vnd(f.balance)}</div></div>
-        <div className="card stat"><div className="k">Chưa thu (phí + phạt)</div><div className="v" style={{ color: (f.penalty_uncollected + (f.fee_uncollected || 0)) ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected + (f.fee_uncollected || 0))}</div></div>
+        <div className="card stat"><div className="k">Còn thiếu (ký quỹ + phạt)</div><div className="v" style={{ color: (f.penalty_uncollected + (f.fee_uncollected || 0)) ? 'var(--red)' : undefined }}>{vnd(f.penalty_uncollected + (f.fee_uncollected || 0))}</div></div>
         <div className="card stat"><div className="k">Nạp chờ duyệt</div><div className="v">{pending.length}</div></div>
         <div className="card stat"><div className="k">Đã tập hôm nay</div><div className="v">{state.members.filter((m) => m.today?.status === 'trained').length}<small>/{state.members.length}</small></div></div>
       </div>
@@ -217,8 +217,8 @@ function AMembers({ state, reload }) {
             <div className="grow"><b>{m.name}</b>{m.locked && <span className="pill penalty no-dot" style={{ marginLeft: 8 }}>Đã khóa</span>}
               <div className="small dim">Tham gia {ddmmyyyy(m.joined_on)} · {m.has_pin ? 'Đã có PIN' : 'Chưa tạo PIN'} · ví {vnd(m.balance)}{m.outstanding > 0 ? ` · nợ ${vnd(m.outstanding)}` : ''}
                 {state.settings.monthly_fee > 0 && (m.fee_month
-                  ? ` · phí tháng ${m.fee_month.status === 'voided' ? 'được miễn' : vnd(m.fee_month.amount) + ` (${m.fee_month.member_days}/${m.fee_month.month_days} ngày)`}`
-                  : m.fee_preview?.amount ? ` · phí dự kiến ${vnd(m.fee_preview.amount)} (${m.fee_preview.member_days}/${m.fee_preview.month_days} ngày, thu ngày ${ddmmyyyy(m.joined_on)})` : '')}</div></div>
+                  ? ` · ký quỹ ${m.fee_month.status === 'voided' ? 'được miễn' : vnd(m.fee_preview?.amount || 0) + ` (${m.fee_month.member_days}/${m.fee_month.month_days} ngày)` + (m.fee_month.paid >= m.fee_month.amount ? ' đủ' : ` thiếu ${vnd(m.fee_month.amount - m.fee_month.paid)}`)}`
+                  : m.fee_preview?.amount ? ` · ký quỹ dự kiến ${vnd(m.fee_preview.amount)} (${m.fee_preview.member_days}/${m.fee_preview.month_days} ngày, từ ${ddmmyyyy(m.joined_on)})` : '')}</div></div>
             <button className="btn sm" onClick={() => setEdit({ ...m })}>Sửa</button>
           </div>
         ))}
@@ -239,7 +239,7 @@ function AMembers({ state, reload }) {
                   <button className="btn" onClick={async () => (await call('admin_update_member', { p_id: edit.id, p_name: null, p_color: null, p_locked: !edit.locked }, edit.locked ? 'Đã mở khóa.' : 'Đã khóa (tạm dừng, không bị phạt).', reload)) && setEdit(null)}>{edit.locked ? 'Mở khóa' : 'Khóa tài khoản'}</button>
                 </div>
                 {edit.fee_month && edit.fee_month.status === 'active' && (
-                  <button className="btn block" onClick={async () => { const note = await askText('Lý do miễn phí tháng này cho ' + edit.name, 'Ví dụ: thành viên mới, nhóm miễn'); if (note && (await call('admin_void_due', { p_member: edit.id, p_month: state.today.slice(0, 8) + '01', p_note: note }, 'Đã miễn phí tháng, tiền đã thu được hoàn về ví.', reload))) setEdit(null) }}>Miễn phí tháng này ({vnd(edit.fee_month.amount)})</button>
+                  <button className="btn block" onClick={async () => { const note = await askText('Lý do miễn ký quỹ tháng này cho ' + edit.name, 'Ví dụ: thành viên mới, nhóm miễn'); if (note && (await call('admin_void_due', { p_member: edit.id, p_month: state.today.slice(0, 8) + '01', p_note: note }, 'Đã miễn ký quỹ tháng này.', reload))) setEdit(null) }}>Miễn ký quỹ tháng này</button>
                 )}
                 <button className="btn danger block" onClick={async () => (await askConfirm(`Xóa ${edit.name}? Lịch sử tài chính vẫn được giữ.`)) && (await call('admin_delete_member', { p_id: edit.id }, 'Đã xóa.', reload)) && setEdit(null)}>Xóa thành viên</button>
               </>
@@ -322,14 +322,14 @@ function ASettings({ state, reload }) {
     const off = v.off_text.split(/[\s,;]+/).filter(Boolean)
     if (off.some((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d))) return toast('Ngày nghỉ thêm phải dạng YYYY-MM-DD.', true)
     if (!(await askConfirm('Lưu cài đặt? Chỉ áp dụng cho các ngày chưa chốt.'))) return
-    await call('admin_update_settings', { p: { monthly_fee: Number(v.monthly_fee || 0), penalty_amount: Number(v.penalty_amount), workdays: v.workdays, off_dates: off, checkin_start: v.checkin_start, checkin_end: v.checkin_end, challenge_start: v.challenge_start, allow_self_join: !!v.allow_self_join, join_code: v.join_code || '' } }, 'Đã lưu cài đặt.', reload)
+    await call('admin_update_settings', { p: { monthly_fee: Number(v.monthly_fee || 0), penalty_amount: Number(v.penalty_amount), workdays: v.workdays, off_dates: off, checkin_start: v.checkin_start, checkin_end: v.checkin_end, challenge_start: v.challenge_start, allow_self_join: !!v.allow_self_join, join_code: v.join_code || '', treasurer: v.treasurer || '', pay_bank: v.pay_bank || '', pay_account: v.pay_account || '', pay_name: v.pay_name || '' } }, 'Đã lưu cài đặt.', reload)
   }
   return (
     <div className="card stack" style={{ maxWidth: 620 }}>
       <h3 className="display" style={{ fontSize: 22 }}>Quy định</h3>
       <div className="field"><label htmlFor="pa">Mức phạt / ngày (VNĐ)</label><input id="pa" className="input" inputMode="numeric" value={v.penalty_amount} onChange={(e) => setV({ ...v, penalty_amount: e.target.value.replace(/\D/g, '') })} /></div>
-      <div className="field"><label htmlFor="mf">Phí tham gia tháng (VNĐ, 0 = không thu)</label><input id="mf" className="input" inputMode="numeric" value={v.monthly_fee ?? 0} onChange={(e) => setV({ ...v, monthly_fee: e.target.value.replace(/\D/g, '') })} />
-        <span className="small dim">Tính theo ngày: người vào giữa tháng đóng = phí × (ngày bắt buộc còn lại ÷ {state.month_days} ngày bắt buộc của tháng). Ví dụ phí {Number(v.monthly_fee || 0).toLocaleString('vi-VN')}đ, còn 10 ngày → {(Math.round((Number(v.monthly_fee || 0) * 10) / (state.month_days || 1) / 1000) * 1000).toLocaleString('vi-VN')}đ. Thu tự động đầu tháng / khi tham gia.</span>
+      <div className="field"><label htmlFor="mf">Ký quỹ tháng (VNĐ, 0 = không yêu cầu)</label><input id="mf" className="input" inputMode="numeric" value={v.monthly_fee ?? 0} onChange={(e) => setV({ ...v, monthly_fee: e.target.value.replace(/\D/g, '') })} />
+        <span className="small dim">Tính theo ngày: người vào giữa tháng đóng = phí × (ngày bắt buộc còn lại ÷ {state.month_days} ngày bắt buộc của tháng). Ví dụ phí {Number(v.monthly_fee || 0).toLocaleString('vi-VN')}đ, còn 10 ngày → {(Math.round((Number(v.monthly_fee || 0) * 10) / (state.month_days || 1) / 1000) * 1000).toLocaleString('vi-VN')}đ. Tiền nằm trong ví thành viên, chỉ trừ sang quỹ khi bị phạt. Số dư tháng trước được tính sang tháng sau.</span>
       </div>
       <div className="field"><label>Ngày bắt buộc tập</label>
         <div className="daychips">{[1, 2, 3, 4, 5, 6, 7].map((d) => <button key={d} className={v.workdays.includes(d) ? 'on' : ''} onClick={() => toggle(d)} aria-pressed={v.workdays.includes(d)}>{WEEKDAYS[d - 1]}</button>)}</div>
@@ -340,6 +340,19 @@ function ASettings({ state, reload }) {
       </div>
       <div className="field"><label htmlFor="st">Ngày bắt đầu thử thách</label><input id="st" type="date" className="input" value={v.challenge_start} onChange={(e) => setV({ ...v, challenge_start: e.target.value })} /></div>
       <div className="field"><label htmlFor="od">Ngày nghỉ thêm (lễ, Tết) — cách nhau bằng dấu phẩy</label><input id="od" className="input" placeholder="2027-01-01, 2027-02-16" value={v.off_text} onChange={(e) => setV({ ...v, off_text: e.target.value })} /></div>
+      <h3 className="display" style={{ fontSize: 22, marginTop: 10 }}>Thủ quỹ nhận tiền</h3>
+      <p className="small muted" style={{ margin: 0 }}>Thành viên chuyển khoản trực tiếp vào tài khoản này (app tạo mã VietQR có sẵn số tiền + nội dung). App không giữ tiền; thủ quỹ xác nhận khi đã nhận.</p>
+      <div className="field"><label htmlFor="tq">Tên thủ quỹ</label><input id="tq" className="input" value={v.treasurer || ''} onChange={(e) => setV({ ...v, treasurer: e.target.value })} placeholder="Ví dụ: Anh An" /></div>
+      <div className="grid g2">
+        <div className="field"><label htmlFor="bk">Ngân hàng</label>
+          <select id="bk" className="input" value={v.pay_bank || ''} onChange={(e) => setV({ ...v, pay_bank: e.target.value })}>
+            <option value="">— Chọn ngân hàng —</option>
+            {['VCB', 'TCB', 'MB', 'ACB', 'BIDV', 'ICB', 'VBA', 'VPB', 'TPB', 'STB', 'VIB', 'HDB', 'SHB', 'OCB', 'MSB', 'EIB', 'LPB', 'SEAB', 'NAB', 'CAKE', 'TIMO'].map((b) => <option key={b} value={b}>{({ VCB: 'Vietcombank', TCB: 'Techcombank', MB: 'MB Bank', ACB: 'ACB', BIDV: 'BIDV', ICB: 'VietinBank', VBA: 'Agribank', VPB: 'VPBank', TPB: 'TPBank', STB: 'Sacombank', VIB: 'VIB', HDB: 'HDBank', SHB: 'SHB', OCB: 'OCB', MSB: 'MSB', EIB: 'Eximbank', LPB: 'LPBank', SEAB: 'SeABank', NAB: 'Nam A Bank', CAKE: 'CAKE', TIMO: 'Timo' })[b]}</option>)}
+          </select>
+        </div>
+        <div className="field"><label htmlFor="ac">Số tài khoản</label><input id="ac" className="input" inputMode="numeric" value={v.pay_account || ''} onChange={(e) => setV({ ...v, pay_account: e.target.value.replace(/[^0-9]/g, '') })} /></div>
+      </div>
+      <div className="field"><label htmlFor="an">Tên chủ tài khoản (không dấu)</label><input id="an" className="input" value={v.pay_name || ''} onChange={(e) => setV({ ...v, pay_name: e.target.value.toUpperCase() })} placeholder="NGUYEN VAN A" /></div>
       <h3 className="display" style={{ fontSize: 22, marginTop: 10 }}>Thành viên mới tự tham gia</h3>
       <label className="row" style={{ gap: 10, fontWeight: 600 }}>
         <input type="checkbox" checked={!!v.allow_self_join} onChange={(e) => setV({ ...v, allow_self_join: e.target.checked })} style={{ width: 22, height: 22, accentColor: 'var(--neon)' }} />

@@ -1,0 +1,75 @@
+\set ON_ERROR_STOP 1
+\pset tuples_only on
+\pset format unaligned
+-- Ký quỹ tháng theo ngày tham gia (chạy sau 30_join_recovery.sql)
+update settings set allow_self_join = true, monthly_fee = 0;
+update test_clock set t = '2026-12-01 08:00';
+select process_penalties();
+select t_eq((select count(*) from dues)::int, 0, 'K0 ký quỹ = 0 → không yêu cầu');
+update members set locked = true where name = 'Em Hoàng';
+select id as an from members where name = 'Anh An' \gset
+select wallet_balance(:'an') as anbal \gset
+select coalesce(sum(amount),0) as fund0 from fund_tx \gset
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000a0a0';
+select admin_update_settings('{"monthly_fee": 260000, "treasurer": "Anh An", "pay_bank": "vcb", "pay_account": "0123 456 789", "pay_name": "Nguyen Van An"}') is null;
+reset request.jwt.claim.sub;
+reset role;
+select process_penalties();
+select t_eq(month_mandatory_days('2026-12-01'), 27, 'K1 Tháng 12/2026: 27 ngày bắt buộc');
+select t_eq((select required from dues where member_id = :'an'), 260000, 'K2 vào từ đầu tháng: ký quỹ yêu cầu đủ 260.000đ');
+select t_eq((select amount from dues where member_id = :'an'), greatest(260000 - greatest(:anbal, 0), 0), 'K3 số dư cũ được trừ vào phần phải nạp');
+select t_eq(wallet_balance(:'an'), :anbal, 'K4 ký quỹ KHÔNG trừ tiền khỏi ví');
+select t_eq((select coalesce(sum(amount),0) from fund_tx)::int, :fund0, 'K5 ký quỹ KHÔNG chuyển vào quỹ nhóm');
+select t_eq((select count(*) from dues d join members m on m.id = d.member_id where m.name = 'Em Hoàng')::int, 0, 'K6 tài khoản khóa không yêu cầu ký quỹ');
+select t_eq((select pay_account from settings), '0123456789', 'K7 lưu thông tin nhận tiền (chuẩn hóa số TK)');
+update members set locked = false where name = 'Em Hoàng';
+
+-- Người mới vào 15/12
+update test_clock set t = '2026-12-15 10:00';
+set role anon;
+select member_join('GYM2026', 'Em Lan', '1212') as lan \gset
+reset role;
+select process_penalties();
+select id as lanid from members where name = 'Em Lan' \gset
+select t_eq((select required from dues where member_id = :'lanid'), 144000, 'K8 vào 15/12 → ký quỹ 260.000 × 15/27 = 144.000đ');
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000a0a0';
+select admin_wallet_entry(:'lanid', 'deposit', 100000, 'Tiền mặt') is null;
+reset request.jwt.claim.sub;
+reset role;
+select t_eq(wallet_balance(:'lanid'), 100000, 'K9 tiền nạp nằm trong ví của thành viên');
+select t_eq((select paid from dues where member_id = :'lanid'), 100000, 'K10 tính vào ký quỹ đã nạp');
+set role anon;
+select t_eq((select (x->>'outstanding')::int from jsonb_array_elements(app_state(:'lan'::jsonb->>'token')->'members') x where x->>'id' = :'lanid'), 44000, 'K11 còn thiếu 44.000đ ký quỹ');
+-- Đã tập thì không đổi sang báo vắng
+select member_checkin(:'lan'::jsonb->>'token') is not null;
+select t_err(format($$select public.member_register_absence(%L, 'work', null)$$, :'lan'::jsonb->>'token'), 'ALREADY_TRAINED', 'K12 đã tập thì không báo vắng được');
+reset role;
+-- Vắng không lý do 16/12 → trừ 50k từ ký quỹ sang quỹ
+select coalesce(sum(amount),0) as fund1 from fund_tx \gset
+update test_clock set t = '2026-12-17 09:00';
+select process_penalties();
+select t_eq(wallet_balance(:'lanid'), 50000, 'K13 phạm luật: trừ 50.000đ từ ký quỹ');
+select t_eq((select coalesce(sum(amount),0) from fund_tx where type = 'penalty_income' and member_id = :'lanid')::int, 50000, 'K14 tiền phạt vào quỹ nhóm');
+-- Sang tháng mới: số dư còn lại được tính, chỉ nạp phần thiếu
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000a0a0';
+select admin_wallet_entry(:'lanid', 'deposit', 1000000, 'CK') is null;
+reset request.jwt.claim.sub;
+reset role;
+update test_clock set t = '2027-01-01 08:00';
+select process_penalties();
+select t_eq((select required from dues where member_id = :'lanid' and month = '2027-01-01'), 260000, 'K15 tháng 1/2027 làm lại: ký quỹ đủ tháng 260.000đ');
+select t_eq((select amount from dues where member_id = :'lanid' and month = '2027-01-01'), greatest(260000 - wallet_balance(:'lanid'), 0), 'K16 số dư tháng trước được chuyển sang, chỉ nạp phần thiếu');
+select t_eq((select status from dues where member_id = :'lanid' and month = '2026-12-01'), 'active', 'K17 tháng 12 vẫn lưu lịch sử');
+-- Miễn ký quỹ
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000a0a0';
+select admin_void_due(:'lanid', '2027-01-01', 'miễn test') is null;
+reset request.jwt.claim.sub;
+reset role;
+select t_eq((select status from dues where member_id = :'lanid' and month = '2027-01-01'), 'voided', 'K18 Admin miễn ký quỹ tháng');
+select t_eq(((select sum(amount) from wallet_tx where status='confirmed') + (select sum(amount) from fund_tx))::int,
+  ((select sum(amount) from wallet_tx where status='confirmed' and type in ('deposit','adjustment')))::int, 'K19 cân đối: ví + quỹ = tiền thật đã nộp');
+select t_eq((select (x->>'fee')::int from jsonb_array_elements(month_report('2026-12-01')->'members') x where x->>'id' = :'lanid'), 144000, 'K20 báo cáo tháng hiện ký quỹ yêu cầu');
