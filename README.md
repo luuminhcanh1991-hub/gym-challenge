@@ -1,5 +1,8 @@
 # GYM CHALLENGE — Tập đều, không bỏ cuộc
 
+- **App:** https://tks-gym.github.io/
+- **Admin:** https://tks-gym.github.io/admin
+
 Ứng dụng web cho nhóm tập gym: check-in mỗi ngày, báo vắng có lý do, tự tính phạt, ví cá nhân, quỹ nhóm, xếp hạng, báo cáo tháng.
 
 - **Frontend:** React + Vite, hosting miễn phí trên GitHub Pages (PWA, cài được lên màn hình chính).
@@ -33,7 +36,7 @@ src/                                         # ứng dụng React
 
 ## Cài đặt (1 lần)
 
-1. **Supabase:** tạo project → **SQL Editor** → dán toàn bộ `supabase/migrations/001_gym_challenge.sql` → **Run**.
+1. **Supabase:** tạo project → **SQL Editor** → lần lượt dán và chạy từng file trong `supabase/migrations/` theo thứ tự `001`, `002`, `003`… (mỗi file an toàn khi chạy lại).
 2. **Tạo Admin:** Authentication → Users → **Add user** (email + mật khẩu do bạn tự đặt, tick *Auto Confirm*). Sau đó chạy trong SQL Editor:
    ```sql
    select public.bootstrap_admin('email-cua-ban@example.com');
@@ -48,7 +51,8 @@ Không bao giờ đưa `service_role` key vào repo hoặc biến môi trường
 ## Sử dụng
 
 - **Thành viên:** mở link → chọn tên → lần đầu tự tạo PIN 4–6 số → bấm **TÔI ĐÃ TẬP HÔM NAY** sau mỗi buổi tập, hoặc **HÔM NAY TÔI KHÔNG THỂ TẬP**. Nạp tiền: chuyển khoản cho Admin rồi gửi yêu cầu trong mục *Tài chính*.
-- **Admin:** `…/gym-challenge/admin` → xác nhận nạp tiền, thêm/khóa/xóa thành viên, đặt lại PIN, đổi mức phạt, ngày tập, giờ check-in, ngày nghỉ lễ, miễn phạt có lý do, chốt tháng, xuất Excel/PDF, tải bản sao lưu JSON.
+- **Thành viên mới:** màn hình đăng nhập → *Tham gia nhóm* → nhập mã mời (Admin xem ở Cài đặt). Quên PIN: *Quên PIN?* → nhập mã khôi phục.
+- **Admin:** `https://tks-gym.github.io/admin` → xác nhận nạp tiền, thêm/khóa/xóa thành viên, đặt lại PIN, đổi mức phạt, ngày tập, giờ check-in, ngày nghỉ lễ, miễn phạt có lý do, chốt tháng, xuất Excel/PDF, tải bản sao lưu JSON.
 
 ## Kiểm thử cục bộ
 
